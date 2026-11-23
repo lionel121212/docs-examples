@@ -5,7 +5,7 @@ import React, { useState } from 'react';
 import { Alert, KeyboardAvoidingView, Modal, Platform, Pressable, ScrollView, StyleSheet, Switch, Text, TextInput, View } from 'react-native';
 import { Illustration, ICON_KEYS, pickIcon } from './illustrations';
 import { TaskIcon } from './TaskIcon';
-import { ALL_DAYS, Category, DAY_LABELS, PALETTE, Task } from './types';
+import { ALL_DAYS, Category, DAY_LABELS, Exercise, PALETTE, Task } from './types';
 
 type Props = {
   task: Task | null; // null = closed
@@ -46,6 +46,9 @@ function Form({ task, isNew, categories, onAddCategory, onSave, onDelete, onClos
   const pickerDate = new Date();
   pickerDate.setHours(hh, mm, 0, 0);
 
+  const setEx = (id: string, p: Partial<Exercise>) =>
+    set({ exercises: (draft.exercises ?? []).map((e) => (e.id === id ? { ...e, ...p } : e)) });
+
   const toggleDay = (d: number) => set({ days: draft.days.includes(d) ? draft.days.filter((x) => x !== d) : [...draft.days, d].sort() });
 
   const choosePhoto = async () => {
@@ -68,7 +71,7 @@ function Form({ task, isNew, categories, onAddCategory, onSave, onDelete, onClos
   const save = () => {
     if (!draft.title.trim()) return Alert.alert('חסר שם', 'תן שם למשימה');
     if (draft.days.length === 0) return Alert.alert('חסרים ימים', 'בחר לפחות יום אחד');
-    onSave({ ...draft, title: draft.title.trim() });
+    onSave({ ...draft, title: draft.title.trim(), exercises: (draft.exercises ?? []).filter((e) => e.name.trim()) });
   };
 
   const confirmDelete = () =>
@@ -130,6 +133,24 @@ function Form({ task, isNew, categories, onAddCategory, onSave, onDelete, onClos
             <Text style={s.iconLbl}>תמונה שלי</Text>
           </Pressable>
         </ScrollView>
+
+        <Text style={s.label}>תרגילים / רשימת משנה</Text>
+        <Text style={s.hint}>למשל באימון כושר: שכיבות סמיכה, 80. בכל יום מסמנים וי על כל תרגיל, וכשכולם מסומנים המשימה נחשבת בוצעה.</Text>
+        {(draft.exercises ?? []).map((ex) => (
+          <View key={ex.id} style={[s.row, { marginTop: 8 }]}>
+            <TextInput style={[s.input, { flex: 2, fontSize: 16, padding: 8 }]} value={ex.name} placeholder="תרגיל" onChangeText={(name) => setEx(ex.id, { name })} />
+            <TextInput style={[s.input, { flex: 2, fontSize: 16, padding: 8 }]} value={ex.detail} placeholder="כמה? (10×3, 6 ק״ג)" onChangeText={(detail) => setEx(ex.id, { detail })} />
+            <Pressable onPress={() => set({ exercises: (draft.exercises ?? []).filter((e) => e.id !== ex.id) })} style={{ padding: 6 }}>
+              <Text style={{ fontSize: 20 }}>🗑️</Text>
+            </Pressable>
+          </View>
+        ))}
+        <Pressable
+          onPress={() => set({ exercises: [...(draft.exercises ?? []), { id: 'e' + Date.now(), name: '', detail: '' }] })}
+          style={[s.chip, { borderColor: draft.color, alignSelf: 'flex-start', marginTop: 10 }]}
+        >
+          <Text style={s.chipTxt}>＋ תרגיל</Text>
+        </Pressable>
 
         <Text style={s.label}>שעה</Text>
         <Pressable style={s.timeBtn} onPress={() => setShowPicker(true)}>

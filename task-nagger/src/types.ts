@@ -2,6 +2,8 @@ export type IconKey =
   | 'face' | 'tooth' | 'simulator' | 'bike' | 'dumbbell' | 'run' | 'moon' | 'sun'
   | 'book' | 'drop' | 'pill' | 'laptop' | 'apple' | 'check';
 
+export type Exercise = { id: string; name: string; detail: string };
+
 export type Category = { id: string; name: string; color: string };
 
 export type Task = {
@@ -21,6 +23,8 @@ export type Task = {
   nagEveryMin: number;
   nagCount: number;
   enabled: boolean;
+  /** optional checklist inside the task (e.g. workout exercises) */
+  exercises?: Exercise[];
   /** YYYY-MM-DD: the yearly table only counts days from here on */
   createdAt: string;
 };

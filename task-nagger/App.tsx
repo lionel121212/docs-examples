@@ -11,6 +11,7 @@ import { TaskEditor } from './src/TaskEditor';
 import { TaskIcon } from './src/TaskIcon';
 import { Category, DoneMap, PALETTE, Task } from './src/types';
 import { dateKey } from './src/dates';
+import { WeekTable } from './src/WeekTable';
 import { YearView } from './src/YearView';
 
 type Status = 'done' | 'late' | 'pending' | 'none';
@@ -37,7 +38,7 @@ function greeting(d: Date) {
 
 function Main() {
   const insets = useSafeAreaInsets();
-  const [tab, setTab] = useState<'today' | 'year'>('today');
+  const [tab, setTab] = useState<'today' | 'table' | 'year'>('today');
   const [tasks, setTasks] = useState<Task[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [done, setDone] = useState<DoneMap>({});
@@ -88,19 +89,37 @@ function Main() {
     return c;
   };
 
-  const markDone = async (t: Task) => {
-    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
-    const next = { ...done, [doneKey(t.id)]: true as const };
+  const commitDone = async (next: DoneMap, task: Task, date: Date, value: boolean) => {
     setDone(next);
     await saveDone(next);
-    await cancelTodaysNags(t.id);
+    if (dateKey(date) === dateKey(new Date())) {
+      if (value) await cancelTodaysNags(task.id);
+      else await resync(latest.current.tasks, next);
+    }
   };
-  const undo = async (t: Task) => {
-    const next = { ...done };
-    delete next[doneKey(t.id)];
-    setDone(next);
-    await saveDone(next);
-    await resync(tasks, next);
+
+  /** Mark a whole task done / not done for a given day (also ticks every exercise). */
+  const setTaskDone = async (t: Task, date: Date, value: boolean) => {
+    if (value) Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
+    const next = { ...latest.current.done };
+    const set = (k: string) => (value ? (next[k] = true) : delete next[k]);
+    set(doneKey(t.id, date));
+    (t.exercises ?? []).forEach((e) => set(doneKey(`${t.id}#${e.id}`, date)));
+    await commitDone(next, t, date, value);
+  };
+
+  /** Tick one exercise; when all are ticked the whole task counts as done. */
+  const toggleExercise = async (t: Task, exId: string) => {
+    const date = new Date();
+    const next = { ...latest.current.done };
+    const k = doneKey(`${t.id}#${exId}`, date);
+    const wasOn = !!next[k];
+    if (wasOn) delete next[k]; else next[k] = true;
+    const all = (t.exercises ?? []).every((e) => next[doneKey(`${t.id}#${e.id}`, date)]);
+    if (all) next[doneKey(t.id, date)] = true; else delete next[doneKey(t.id, date)];
+    if (all) Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
+    else Haptics.selectionAsync().catch(() => {});
+    await commitDone(next, t, date, all);
   };
 
   const rows: Row[] = useMemo(
@@ -114,24 +133,43 @@ function Main() {
 
   const card = (r: Row) => {
     const late = r.status === 'late';
+    const exs = r.exercises ?? [];
+    const exDone = exs.filter((e) => done[doneKey(`${r.id}#${e.id}`, now)]).length;
     return (
-      <Pressable key={r.id} onPress={() => setEditing({ task: r, isNew: false })}
-        style={[s.card, { borderLeftColor: r.color }, late && s.cardLate, r.status === 'done' && { opacity: 0.55 }]}>
+      <View key={r.id} style={[s.card, { borderLeftColor: r.color }, late && s.cardLate, r.status === 'done' && { opacity: 0.55 }]}>
+      <Pressable onPress={() => setEditing({ task: r, isNew: false })} style={s.cardTop}>
         <TaskIcon task={r} size={58} />
         <View style={{ flex: 1 }}>
           <Text style={[s.title, r.status === 'done' && { textDecorationLine: 'line-through' }]}>{r.title}</Text>
           <Text style={[s.sub, late && { color: '#dc2626', fontWeight: '700' }]}>
-            {r.time}{late ? '  •  באיחור!' : r.status === 'pending' ? '  •  ממתין' : !r.enabled ? '  •  כבויה' : ''}
+            {r.time}{late ? '  •  באיחור!' : r.status === 'pending' ? '  •  ממתין' : !r.enabled ? '  •  כבויה' : ''}{exs.length ? `  •  ${exDone}/${exs.length} תרגילים` : ''}
           </Text>
         </View>
         {r.status === 'done' ? (
-          <Pressable onPress={() => undo(r)} style={s.undo}><Text style={s.undoTxt}>✅</Text></Pressable>
+          <Pressable onPress={() => setTaskDone(r, now, false)} style={s.undo}><Text style={s.undoTxt}>✅</Text></Pressable>
         ) : r.status !== 'none' ? (
-          <Pressable onPress={() => markDone(r)} style={[s.doneBtn, { backgroundColor: late ? '#dc2626' : r.color }]}>
+          <Pressable onPress={() => setTaskDone(r, now, true)} style={[s.doneBtn, { backgroundColor: late ? '#dc2626' : r.color }]}>
             <Text style={s.doneTxt}>בוצע</Text>
           </Pressable>
         ) : null}
       </Pressable>
+      {exs.length > 0 && r.status !== 'none' && (
+        <View style={s.exList}>
+          {exs.map((e) => {
+            const on = !!done[doneKey(`${r.id}#${e.id}`, now)];
+            return (
+              <Pressable key={e.id} style={s.exRow} onPress={() => toggleExercise(r, e.id)}>
+                <View style={[s.check, { borderColor: r.color }, on && { backgroundColor: r.color }]}>
+                  {on && <Text style={s.checkTick}>✓</Text>}
+                </View>
+                <Text style={[s.exName, on && { textDecorationLine: 'line-through', color: '#94a3b8' }]}>{e.name}</Text>
+                <Text style={s.exDetail}>{e.detail}</Text>
+              </Pressable>
+            );
+          })}
+        </View>
+      )}
+      </View>
     );
   };
 
@@ -170,11 +208,19 @@ function Main() {
             </View>
           )}
         </ScrollView>
+      ) : tab === 'table' ? (
+        <WeekTable
+          tasks={tasks}
+          done={done}
+          categories={categories}
+          onToggle={(t, d) => setTaskDone(t, d, !done[doneKey(t.id, d)])}
+          onEdit={(t) => setEditing({ task: t, isNew: false })}
+        />
       ) : (
         <YearView tasks={tasks} done={done} categories={categories} />
       )}
 
-      {tab === 'today' && (
+      {tab !== 'year' && (
         <Pressable style={[s.fab, { bottom: insets.bottom + 84 }]} onPress={() => setEditing({ task: newTask(categories[0]?.id ?? 'health'), isNew: true })}>
           <Text style={s.fabTxt}>＋ משימה</Text>
         </Pressable>
@@ -184,8 +230,11 @@ function Main() {
         <Pressable style={s.tab} onPress={() => setTab('today')}>
           <Text style={[s.tabTxt, tab === 'today' && s.tabOn]}>📋 היום</Text>
         </Pressable>
+        <Pressable style={s.tab} onPress={() => setTab('table')}>
+          <Text style={[s.tabTxt, tab === 'table' && s.tabOn]}>🗓️ טבלה</Text>
+        </Pressable>
         <Pressable style={s.tab} onPress={() => setTab('year')}>
-          <Text style={[s.tabTxt, tab === 'year' && s.tabOn]}>📅 השנה שלי</Text>
+          <Text style={[s.tabTxt, tab === 'year' && s.tabOn]}>📅 שנה</Text>
         </Pressable>
       </View>
 
@@ -225,9 +274,16 @@ const s = StyleSheet.create({
   secCount: { fontSize: 13, color: '#94a3b8', fontWeight: '700' },
   others: { fontSize: 14, color: '#94a3b8', fontWeight: '700', marginBottom: 2 },
   card: {
-    flexDirection: 'row', alignItems: 'center', gap: 12, backgroundColor: '#fff', padding: 12, borderRadius: 18,
+    backgroundColor: '#fff', padding: 12, borderRadius: 18, gap: 8,
     marginBottom: 10, borderLeftWidth: 6, shadowColor: '#000', shadowOpacity: 0.06, shadowRadius: 8, shadowOffset: { width: 0, height: 2 }, elevation: 2,
   },
+  cardTop: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  exList: { borderTopWidth: 1, borderTopColor: '#f1f5f9', paddingTop: 6 },
+  exRow: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 8 },
+  check: { width: 26, height: 26, borderRadius: 8, borderWidth: 2, alignItems: 'center', justifyContent: 'center' },
+  checkTick: { color: '#fff', fontWeight: '900', fontSize: 15 },
+  exName: { flex: 1, fontSize: 16, fontWeight: '600', color: '#0f172a' },
+  exDetail: { fontSize: 13, color: '#64748b' },
   cardLate: { backgroundColor: '#fff5f5' },
   title: { fontSize: 17, fontWeight: '700', color: '#0f172a' },
   sub: { fontSize: 13, color: '#64748b', marginTop: 2 },

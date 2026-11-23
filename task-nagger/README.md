@@ -16,19 +16,13 @@
 - התזמון מתחדש בכל פעם שפותחים את האפליקציה. **פתח אותה לפחות פעם בשבוע.**
 - המשימות שמורות בטלפון בלבד.
 
-## בדיקה מהירה על הטלפון
-1. התקן את **Expo Go** מחנות Play.
-2. `npm install && npx expo start`, וסרוק את ה-QR.
+## התקנה על הטלפון (בלי חשבון Expo)
+בכל דחיפה לריפו, GitHub בונה קובץ APK בעצמו (`.github/workflows/build-task-nagger-apk.yml`).
+1. בריפו ב-GitHub: **Actions**, אחר כך **Build task-nagger APK**, ובוחרים את הריצה האחרונה.
+2. מורידים את `task-nagger-apk`, או את `task-nagger.apk` מעמוד **Releases**, ישירות מהטלפון בכרום.
+3. פותחים את הקובץ ומאשרים "התקנה ממקור לא ידוע". האפליקציה מתקינה את עצמה עם האייקון שלה.
 
-Expo Go מגביל חלק מהיכולות של ההתראות. להתנהגות מלאה, בנה APK.
-
-## בניית APK להתקנה
-```bash
-npm install
-npx eas-cli@latest login          # חשבון חינמי ב-expo.dev
-npx eas-cli@latest build -p android --profile preview
-```
-בסוף הבנייה מקבלים קישור ל-APK. פותחים אותו בטלפון ומתקינים ("מקורות לא ידועים").
+אפשר גם לבנות בעצמך: `npx eas-cli@latest build -p android --profile preview` (דורש חשבון חינמי ב-expo.dev).
 
 ## הגדרות בטלפון שחשוב לעשות
 - אשר הרשאת התראות.
