@@ -1,5 +1,6 @@
 import * as Notifications from 'expo-notifications';
 import { Platform } from 'react-native';
+import { dateKey, doneKey } from './dates';
 import { DoneMap, Task } from './types';
 
 export const CHANNEL_ID = 'nag-v1';
@@ -8,15 +9,7 @@ const WINDOW_DAYS = 7;
 /** Android keeps alarms in AlarmManager; stay well under typical OEM limits */
 const MAX_SCHEDULED = 400;
 
-export function dateKey(d: Date): string {
-  const m = String(d.getMonth() + 1).padStart(2, '0');
-  const day = String(d.getDate()).padStart(2, '0');
-  return `${d.getFullYear()}-${m}-${day}`;
-}
-
-export function doneKey(taskId: string, d: Date = new Date()): string {
-  return `${taskId}|${dateKey(d)}`;
-}
+export { dateKey, doneKey };
 
 export async function setupNotifications(): Promise<boolean> {
   Notifications.setNotificationHandler({
@@ -80,7 +73,7 @@ export function planNotifications(tasks: Task[], done: DoneMap, now: Date = new 
           id: `${task.id}|${dateKey(day)}|${step}`,
           at,
           taskId: task.id,
-          title: `${task.emoji} ${task.title}`,
+          title: task.title,
           body: lineFor(task.title, step),
         });
       }
