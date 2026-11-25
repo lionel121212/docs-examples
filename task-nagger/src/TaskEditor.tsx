@@ -19,6 +19,7 @@ import { Illustration, ICON_KEYS, pickIcon } from './illustrations';
 import { TaskIcon } from './TaskIcon';
 import { useI18n } from './i18n';
 import { ALL_DAYS, Category, Exercise, PALETTE, Task } from './types';
+import { Palette, useStyles, useTheme } from './theme';
 
 type Props = {
   task: Task | null; // null = closed
@@ -43,6 +44,7 @@ function Stepper({
   max: number;
   suffix: string;
 }) {
+  const s = useStyles(makeStyles);
   return (
     <View style={s.stepper}>
       <Pressable style={s.stepBtn} onPress={() => onChange(Math.max(min, value - 1))}>
@@ -68,6 +70,8 @@ export function TaskEditor(props: Props) {
 }
 
 function Form({ task, isNew, categories, onAddCategory, onSave, onDelete, onClose }: Omit<Props, 'task'> & { task: Task }) {
+  const s = useStyles(makeStyles);
+  const C = useTheme();
   const { t, days: dayNames, dir } = useI18n();
   const [draft, setDraft] = useState<Task>(task);
   const [showPicker, setShowPicker] = useState(false);
@@ -116,7 +120,7 @@ function Form({ task, isNew, categories, onAddCategory, onSave, onDelete, onClos
 
   return (
     <KeyboardAvoidingView
-      style={{ flex: 1, backgroundColor: '#fff', direction: dir }}
+      style={{ flex: 1, backgroundColor: C.bg, direction: dir }}
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
     >
       <ScrollView contentContainerStyle={s.form} keyboardShouldPersistTaps="handled">
@@ -288,47 +292,56 @@ function Form({ task, isNew, categories, onAddCategory, onSave, onDelete, onClos
   );
 }
 
-const s = StyleSheet.create({
-  form: { padding: 20, paddingTop: 48, flexGrow: 1 },
-  preview: { alignItems: 'center', gap: 8, marginBottom: 8 },
-  previewTitle: { fontSize: 22, fontWeight: '800' },
-  label: { fontSize: 15, color: '#555', marginTop: 18, marginBottom: 6, fontWeight: '600' },
-  hint: { fontSize: 12, color: '#94a3b8', marginTop: 4 },
-  row: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  wrap: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, alignItems: 'center' },
-  input: { borderWidth: 1, borderColor: '#ccc', borderRadius: 10, padding: 12, fontSize: 18 },
-  chip: { borderWidth: 1.5, borderRadius: 20, paddingHorizontal: 14, paddingVertical: 7 },
-  chipTxt: { fontWeight: '600', fontSize: 14 },
-  swatch: { width: 38, height: 38, borderRadius: 19 },
-  swatchOn: { borderWidth: 4, borderColor: '#0f172a33' },
-  iconBox: {
-    width: 64,
-    height: 64,
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: '#e2e8f0',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  iconLbl: { fontSize: 10, color: '#64748b', marginTop: 1 },
-  timeBtn: { borderWidth: 1, borderColor: '#ccc', borderRadius: 10, padding: 12, alignItems: 'center' },
-  timeTxt: { fontSize: 32, fontWeight: '600', letterSpacing: 2 },
-  days: { flexDirection: 'row', gap: 6, justifyContent: 'space-between' },
-  day: { flex: 1, aspectRatio: 1, borderRadius: 100, borderWidth: 1, borderColor: '#bbb', alignItems: 'center', justifyContent: 'center' },
-  dayTxt: { fontSize: 15, fontWeight: '600' },
-  stepper: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    borderWidth: 1,
-    borderColor: '#ccc',
-    borderRadius: 10,
-  },
-  stepBtn: { padding: 12, width: 60, alignItems: 'center' },
-  stepTxt: { fontSize: 26 },
-  stepVal: { fontSize: 18, fontWeight: '600' },
-  save: { borderRadius: 12, padding: 16, alignItems: 'center', marginTop: 28 },
-  saveTxt: { color: '#fff', fontSize: 18, fontWeight: '700' },
-  cancel: { padding: 14, alignItems: 'center' },
-  cancelTxt: { fontSize: 16, color: '#555' },
-});
+const makeStyles = (C: Palette) =>
+  StyleSheet.create({
+    form: { padding: 20, paddingTop: 48, flexGrow: 1 },
+    preview: { alignItems: 'center', gap: 8, marginBottom: 8 },
+    previewTitle: { fontSize: 22, fontWeight: '800', color: C.text },
+    label: { fontSize: 15, color: C.text2, marginTop: 18, marginBottom: 6, fontWeight: '600' },
+    hint: { fontSize: 12, color: C.faint, marginTop: 4 },
+    row: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+    wrap: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, alignItems: 'center' },
+    input: { borderWidth: 1, borderColor: C.border2, borderRadius: 10, padding: 12, fontSize: 18, color: C.text },
+    chip: { borderWidth: 1.5, borderRadius: 20, paddingHorizontal: 14, paddingVertical: 7 },
+    chipTxt: { fontWeight: '600', fontSize: 14, color: C.text },
+    swatch: { width: 38, height: 38, borderRadius: 19 },
+    swatchOn: { borderWidth: 4, borderColor: '#0f172a33' },
+    iconBox: {
+      width: 64,
+      height: 64,
+      borderRadius: 16,
+      borderWidth: 1,
+      borderColor: C.border,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    iconLbl: { fontSize: 10, color: C.muted, marginTop: 1 },
+    timeBtn: { borderWidth: 1, borderColor: C.border2, borderRadius: 10, padding: 12, alignItems: 'center' },
+    timeTxt: { fontSize: 32, fontWeight: '600', letterSpacing: 2, color: C.text },
+    days: { flexDirection: 'row', gap: 6, justifyContent: 'space-between' },
+    day: {
+      flex: 1,
+      aspectRatio: 1,
+      borderRadius: 100,
+      borderWidth: 1,
+      borderColor: C.border2,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    dayTxt: { fontSize: 15, fontWeight: '600', color: C.text },
+    stepper: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      borderWidth: 1,
+      borderColor: C.border2,
+      borderRadius: 10,
+    },
+    stepBtn: { padding: 12, width: 60, alignItems: 'center' },
+    stepTxt: { fontSize: 26, color: C.text },
+    stepVal: { fontSize: 18, fontWeight: '600', color: C.text },
+    save: { borderRadius: 12, padding: 16, alignItems: 'center', marginTop: 28 },
+    saveTxt: { color: '#fff', fontSize: 18, fontWeight: '700' },
+    cancel: { padding: 14, alignItems: 'center' },
+    cancelTxt: { fontSize: 16, color: C.text2 },
+  });

@@ -7,13 +7,14 @@ import { achievementName } from './AchievementPopup';
 import { achievements } from './achievements';
 import { useI18n } from './i18n';
 import { Category, DoneMap, Task } from './types';
+import { Palette, useStyles, useTheme } from './theme';
 
 const CELL = 15;
 const GAP = 3;
 
-function colorFor(ratio: number | null, future: boolean): string {
-  if (future) return '#eef0f3';
-  if (ratio === null) return '#f6f7f9';
+function colorFor(ratio: number | null, future: boolean, dark = false): string {
+  if (future) return dark ? '#1b2238' : '#eef0f3';
+  if (ratio === null) return dark ? '#151b2c' : '#f6f7f9';
   if (ratio === 1) return '#16a34a';
   if (ratio >= 0.5) return '#86efac';
   if (ratio > 0) return '#fde68a';
@@ -31,6 +32,8 @@ export function YearView({
   categories: Category[];
   onSummary: () => void;
 }) {
+  const s = useStyles(makeStyles);
+  const C = useTheme();
   const { t, locale, days, rtl } = useI18n();
   const MONTHS = useMemo(
     () => Array.from({ length: 12 }, (_, m) => new Date(2026, m, 1).toLocaleDateString(locale, { month: 'short' })),
@@ -188,7 +191,7 @@ export function YearView({
                             onPress={() => setSelected(d)}
                             style={[
                               s.cell,
-                              { backgroundColor: colorFor(isToday && ratio === 0 ? null : ratio, future) },
+                              { backgroundColor: colorFor(isToday && ratio === 0 ? null : ratio, future, C.dark) },
                               isToday && { borderWidth: 2, borderColor: '#2563eb' },
                               isSel && { borderWidth: 2, borderColor: '#0f172a' },
                             ]}
@@ -233,6 +236,7 @@ export function YearView({
 }
 
 function Stat({ n, label }: { n: string; label: string }) {
+  const s = useStyles(makeStyles);
   return (
     <View style={s.stat}>
       <Text style={s.statN}>{n}</Text>
@@ -242,6 +246,7 @@ function Stat({ n, label }: { n: string; label: string }) {
 }
 
 function Chip({ label, color, on, onPress }: { label: string; color: string; on: boolean; onPress: () => void }) {
+  const s = useStyles(makeStyles);
   return (
     <Pressable onPress={onPress} style={[s.chip, { borderColor: color }, on && { backgroundColor: color }]}>
       <Text style={[s.chipTxt, on && { color: '#fff' }]}>{label}</Text>
@@ -249,43 +254,44 @@ function Chip({ label, color, on, onPress }: { label: string; color: string; on:
   );
 }
 
-const s = StyleSheet.create({
-  summaryBtn: { backgroundColor: '#4f46e5', borderRadius: 14, paddingVertical: 12, alignItems: 'center', marginBottom: 12 },
-  summaryTxt: { color: '#fff', fontWeight: '900', fontSize: 15 },
-  achTitle: { fontSize: 15, fontWeight: '800', color: '#334155', marginBottom: 6 },
-  ach: {
-    width: 96,
-    backgroundColor: '#fff',
-    borderRadius: 16,
-    padding: 10,
-    alignItems: 'center',
-    gap: 4,
-    borderWidth: 1,
-    borderColor: '#e2e8f0',
-  },
-  achName: { fontSize: 11, fontWeight: '800', color: '#0f172a', textAlign: 'center' },
-  achProg: { fontSize: 10, color: '#94a3b8' },
-  yearRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 24, marginBottom: 8 },
-  year: { fontSize: 30, fontWeight: '800' },
-  arrow: { padding: 10 },
-  arrowTxt: { fontSize: 32, color: '#2563eb' },
-  stats: { flexDirection: 'row', gap: 8, marginBottom: 12 },
-  stat: { flex: 1, backgroundColor: '#fff', borderRadius: 14, padding: 10, alignItems: 'center' },
-  statN: { fontSize: 22, fontWeight: '800' },
-  statL: { fontSize: 11, color: '#64748b', marginTop: 2, textAlign: 'center' },
-  chips: { gap: 8, paddingVertical: 4 },
-  chip: { borderWidth: 1.5, borderRadius: 20, paddingHorizontal: 14, paddingVertical: 6 },
-  chipTxt: { fontWeight: '600', fontSize: 14 },
-  gridCard: { backgroundColor: '#fff', borderRadius: 16, padding: 12, marginTop: 8 },
-  cell: { width: CELL, height: CELL, borderRadius: 4 },
-  dow: { height: CELL + GAP, fontSize: 10, color: '#94a3b8', width: 20, textAlign: 'center', lineHeight: CELL },
-  month: { position: 'absolute', fontSize: 11, color: '#64748b', top: 0 },
-  legend: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 4, marginTop: 10 },
-  legCell: { width: 14, height: 14, borderRadius: 4 },
-  legTxt: { fontSize: 11, color: '#64748b', marginHorizontal: 4 },
-  detail: { backgroundColor: '#fff', borderRadius: 16, padding: 14, marginTop: 12 },
-  detailTitle: { fontSize: 17, fontWeight: '700', marginBottom: 8 },
-  none: { color: '#94a3b8', paddingVertical: 8 },
-  detailRow: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 6 },
-  detailName: { flex: 1, fontSize: 16 },
-});
+const makeStyles = (C: Palette) =>
+  StyleSheet.create({
+    summaryBtn: { backgroundColor: '#4f46e5', borderRadius: 14, paddingVertical: 12, alignItems: 'center', marginBottom: 12 },
+    summaryTxt: { color: '#fff', fontWeight: '900', fontSize: 15 },
+    achTitle: { fontSize: 15, fontWeight: '800', color: C.text2, marginBottom: 6 },
+    ach: {
+      width: 96,
+      backgroundColor: C.card,
+      borderRadius: 16,
+      padding: 10,
+      alignItems: 'center',
+      gap: 4,
+      borderWidth: 1,
+      borderColor: C.border,
+    },
+    achName: { fontSize: 11, fontWeight: '800', color: C.text, textAlign: 'center' },
+    achProg: { fontSize: 10, color: C.faint },
+    yearRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 24, marginBottom: 8 },
+    year: { fontSize: 30, fontWeight: '800', color: C.text },
+    arrow: { padding: 10 },
+    arrowTxt: { fontSize: 32, color: '#2563eb' },
+    stats: { flexDirection: 'row', gap: 8, marginBottom: 12 },
+    stat: { flex: 1, backgroundColor: C.card, borderRadius: 14, padding: 10, alignItems: 'center' },
+    statN: { fontSize: 22, fontWeight: '800', color: C.text },
+    statL: { fontSize: 11, color: C.muted, marginTop: 2, textAlign: 'center' },
+    chips: { gap: 8, paddingVertical: 4 },
+    chip: { borderWidth: 1.5, borderRadius: 20, paddingHorizontal: 14, paddingVertical: 6 },
+    chipTxt: { fontWeight: '600', fontSize: 14, color: C.text },
+    gridCard: { backgroundColor: C.card, borderRadius: 16, padding: 12, marginTop: 8 },
+    cell: { width: CELL, height: CELL, borderRadius: 4 },
+    dow: { height: CELL + GAP, fontSize: 10, color: C.faint, width: 20, textAlign: 'center', lineHeight: CELL },
+    month: { position: 'absolute', fontSize: 11, color: C.muted, top: 0 },
+    legend: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 4, marginTop: 10 },
+    legCell: { width: 14, height: 14, borderRadius: 4 },
+    legTxt: { fontSize: 11, color: C.muted, marginHorizontal: 4 },
+    detail: { backgroundColor: C.card, borderRadius: 16, padding: 14, marginTop: 12 },
+    detailTitle: { fontSize: 17, fontWeight: '700', marginBottom: 8, color: C.text },
+    none: { color: C.faint, paddingVertical: 8 },
+    detailRow: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 6 },
+    detailName: { flex: 1, fontSize: 16, color: C.text },
+  });

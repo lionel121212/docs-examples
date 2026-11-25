@@ -3,7 +3,7 @@ import * as Haptics from 'expo-haptics';
 import * as Notifications from 'expo-notifications';
 import { StatusBar } from 'expo-status-bar';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Alert, AppState, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Alert, AppState, useColorScheme, Pressable, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaProvider, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { dateKey, doneKey } from './src/dates';
 import {
@@ -40,6 +40,7 @@ import { WeekTable } from './src/WeekTable';
 import { Row, Status, TodayView } from './src/TodayView';
 import { summarize } from './src/stats';
 import { YearView } from './src/YearView';
+import { DARK, LIGHT, Palette, ThemeProvider } from './src/theme';
 
 function statusFor(t: Task, done: DoneMap, now: Date): Status {
   if (!t.enabled || !t.days.includes(now.getDay())) return 'none';
@@ -70,6 +71,7 @@ function newTask(categoryId: string): Task {
 const DEFAULT_CAT_KEYS = { health: 'cat_health', study: 'cat_study', sport: 'cat_sport', gaming: 'cat_hobby', other: 'cat_other' } as const;
 
 function Main() {
+  const systemScheme = useColorScheme();
   const insets = useSafeAreaInsets();
   const { t, lang, dir, setLang } = useI18n();
   const [accountEmail, setAccountEmail] = useState<string | null>(null);
@@ -103,6 +105,8 @@ function Main() {
   latest.current = { tasks, done };
 
   const [prefs, setPrefs] = useState<Prefs>(DEFAULT_PREFS);
+  const C = prefs.theme === 'dark' || (prefs.theme === 'system' && systemScheme === 'dark') ? DARK : LIGHT;
+  const s = useMemo(() => makeStyles(C), [C]);
   const prefsRef = useRef(prefs);
   prefsRef.current = prefs;
   const snoozeRef = useRef<SnoozeMap>({});
@@ -436,131 +440,133 @@ function Main() {
   }
 
   return (
-    <View style={[s.root, { paddingTop: insets.top + 10, direction: dir }]}>
-      <StatusBar style="dark" />
-      {tab === 'today' ? (
-        <TodayView
-          rows={rows}
-          tasks={tasks}
-          categories={categories}
-          done={done}
-          now={now}
-          streak={streak}
-          granted={granted}
-          onDone={(t, v) => setTaskDone(t, now, v)}
-          onToggleExercise={toggleExercise}
-          onEdit={(t) => setEditing({ task: t, isNew: false })}
-          onAdd={openNewTask}
-          onAI={() => setPlanner(true)}
-          onSettings={() => setSettings(true)}
-        />
-      ) : tab === 'table' ? (
-        <WeekTable
-          tasks={tasks}
-          done={done}
-          categories={categories}
-          onToggle={(t, d) => setTaskDone(t, d, !done[doneKey(t.id, d)])}
-          onEdit={(t) => setEditing({ task: t, isNew: false })}
-        />
-      ) : (
-        <YearView tasks={tasks} done={done} categories={categories} onSummary={() => setSummaryOpen(true)} />
-      )}
+    <ThemeProvider mode={prefs.theme}>
+      <View style={[s.root, { paddingTop: insets.top + 10, direction: dir }]}>
+        <StatusBar style={C.dark ? 'light' : 'dark'} />
+        {tab === 'today' ? (
+          <TodayView
+            rows={rows}
+            tasks={tasks}
+            categories={categories}
+            done={done}
+            now={now}
+            streak={streak}
+            granted={granted}
+            onDone={(t, v) => setTaskDone(t, now, v)}
+            onToggleExercise={toggleExercise}
+            onEdit={(t) => setEditing({ task: t, isNew: false })}
+            onAdd={openNewTask}
+            onAI={() => setPlanner(true)}
+            onSettings={() => setSettings(true)}
+          />
+        ) : tab === 'table' ? (
+          <WeekTable
+            tasks={tasks}
+            done={done}
+            categories={categories}
+            onToggle={(t, d) => setTaskDone(t, d, !done[doneKey(t.id, d)])}
+            onEdit={(t) => setEditing({ task: t, isNew: false })}
+          />
+        ) : (
+          <YearView tasks={tasks} done={done} categories={categories} onSummary={() => setSummaryOpen(true)} />
+        )}
 
-      {tab === 'table' && (
-        <Pressable
-          style={[s.fab, { bottom: insets.bottom + 84 }]}
-          onPress={openNewTask}
-          accessibilityRole="button"
-          accessibilityLabel={t('a11y_add')}
-        >
-          <Text style={s.fabTxt}>{t('add_task')}</Text>
-        </Pressable>
-      )}
+        {tab === 'table' && (
+          <Pressable
+            style={[s.fab, { bottom: insets.bottom + 84 }]}
+            onPress={openNewTask}
+            accessibilityRole="button"
+            accessibilityLabel={t('a11y_add')}
+          >
+            <Text style={s.fabTxt}>{t('add_task')}</Text>
+          </Pressable>
+        )}
 
-      <View style={[s.tabs, { paddingBottom: insets.bottom + 8 }]}>
-        <Pressable style={s.tab} onPress={() => setTab('today')}>
-          <Text style={[s.tabTxt, tab === 'today' && s.tabOn]}>{t('tab_today')}</Text>
-        </Pressable>
-        <Pressable style={s.tab} onPress={() => setTab('table')}>
-          <Text style={[s.tabTxt, tab === 'table' && s.tabOn]}>{t('tab_table')}</Text>
-        </Pressable>
-        <Pressable style={s.tab} onPress={() => setTab('year')}>
-          <Text style={[s.tabTxt, tab === 'year' && s.tabOn]}>{t('tab_year')}</Text>
-        </Pressable>
+        <View style={[s.tabs, { paddingBottom: insets.bottom + 8 }]}>
+          <Pressable style={s.tab} onPress={() => setTab('today')}>
+            <Text style={[s.tabTxt, tab === 'today' && s.tabOn]}>{t('tab_today')}</Text>
+          </Pressable>
+          <Pressable style={s.tab} onPress={() => setTab('table')}>
+            <Text style={[s.tabTxt, tab === 'table' && s.tabOn]}>{t('tab_table')}</Text>
+          </Pressable>
+          <Pressable style={s.tab} onPress={() => setTab('year')}>
+            <Text style={[s.tabTxt, tab === 'year' && s.tabOn]}>{t('tab_year')}</Text>
+          </Pressable>
+        </View>
+
+        <Settings
+          prefs={prefs}
+          onPrefs={updatePrefs}
+          onUpgrade={() => {
+            setSettings(false);
+            openPaywall();
+          }}
+          visible={settings}
+          premium={premium}
+          taskCount={tasks.length}
+          onPremium={() => setPremium(true)}
+          accountEmail={accountEmail}
+          onAccount={() => {
+            setSettings(false);
+            setAccountOpen(true);
+          }}
+          onClose={() => setSettings(false)}
+          onRedoQuiz={() => {
+            setSettings(false);
+            setOnboarding({ first: false });
+          }}
+        />
+        {accountScreen}
+        {paywallScreen}
+        <WeeklySummary
+          visible={summaryOpen}
+          tasks={tasks}
+          done={done}
+          premium={premium}
+          onClose={() => setSummaryOpen(false)}
+          onUpgrade={() => {
+            setSummaryOpen(false);
+            openPaywall();
+          }}
+        />
+        <AchievementPopup achievement={newAch} onClose={() => setNewAch(null)} />
+        <AIPlanner
+          onUpgrade={() => {
+            setPlanner(false);
+            openPaywall();
+          }}
+          visible={planner}
+          categories={categories}
+          onClose={() => setPlanner(false)}
+          onAdd={async (added, replace) => {
+            setPlanner(false);
+            setPremium(true); // the planner only answers Premium users
+            AsyncStorage.setItem('premium', '1').catch(() => {});
+            if (added.some((x) => x.categoryId === 'other') && !categories.some((c) => c.id === 'other')) {
+              const next = [...categories, { id: 'other', name: t('cat_other'), color: '#64748b' }];
+              setCategories(next);
+              await saveCategories(next);
+            }
+            await persistTasks(replace ? added : [...tasks, ...added]);
+          }}
+        />
+        <TaskEditor
+          task={editing?.task ?? null}
+          isNew={editing?.isNew ?? false}
+          categories={categories}
+          onAddCategory={addCategory}
+          onClose={() => setEditing(null)}
+          onSave={async (t) => {
+            setEditing(null);
+            await persistTasks(tasks.some((x) => x.id === t.id) ? tasks.map((x) => (x.id === t.id ? t : x)) : [...tasks, t]);
+          }}
+          onDelete={async (id) => {
+            setEditing(null);
+            await persistTasks(tasks.filter((x) => x.id !== id));
+          }}
+        />
       </View>
-
-      <Settings
-        prefs={prefs}
-        onPrefs={updatePrefs}
-        onUpgrade={() => {
-          setSettings(false);
-          openPaywall();
-        }}
-        visible={settings}
-        premium={premium}
-        taskCount={tasks.length}
-        onPremium={() => setPremium(true)}
-        accountEmail={accountEmail}
-        onAccount={() => {
-          setSettings(false);
-          setAccountOpen(true);
-        }}
-        onClose={() => setSettings(false)}
-        onRedoQuiz={() => {
-          setSettings(false);
-          setOnboarding({ first: false });
-        }}
-      />
-      {accountScreen}
-      {paywallScreen}
-      <WeeklySummary
-        visible={summaryOpen}
-        tasks={tasks}
-        done={done}
-        premium={premium}
-        onClose={() => setSummaryOpen(false)}
-        onUpgrade={() => {
-          setSummaryOpen(false);
-          openPaywall();
-        }}
-      />
-      <AchievementPopup achievement={newAch} onClose={() => setNewAch(null)} />
-      <AIPlanner
-        onUpgrade={() => {
-          setPlanner(false);
-          openPaywall();
-        }}
-        visible={planner}
-        categories={categories}
-        onClose={() => setPlanner(false)}
-        onAdd={async (added, replace) => {
-          setPlanner(false);
-          setPremium(true); // the planner only answers Premium users
-          AsyncStorage.setItem('premium', '1').catch(() => {});
-          if (added.some((x) => x.categoryId === 'other') && !categories.some((c) => c.id === 'other')) {
-            const next = [...categories, { id: 'other', name: t('cat_other'), color: '#64748b' }];
-            setCategories(next);
-            await saveCategories(next);
-          }
-          await persistTasks(replace ? added : [...tasks, ...added]);
-        }}
-      />
-      <TaskEditor
-        task={editing?.task ?? null}
-        isNew={editing?.isNew ?? false}
-        categories={categories}
-        onAddCategory={addCategory}
-        onClose={() => setEditing(null)}
-        onSave={async (t) => {
-          setEditing(null);
-          await persistTasks(tasks.some((x) => x.id === t.id) ? tasks.map((x) => (x.id === t.id ? t : x)) : [...tasks, t]);
-        }}
-        onDelete={async (id) => {
-          setEditing(null);
-          await persistTasks(tasks.filter((x) => x.id !== id));
-        }}
-      />
-    </View>
+    </ThemeProvider>
   );
 }
 
@@ -574,31 +580,32 @@ export default function App() {
   );
 }
 
-const s = StyleSheet.create({
-  root: { flex: 1, backgroundColor: '#f1f5f9', paddingHorizontal: 16 },
-  center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
-  fab: {
-    position: 'absolute',
-    alignSelf: 'center',
-    backgroundColor: '#0f172a',
-    paddingHorizontal: 26,
-    paddingVertical: 14,
-    borderRadius: 30,
-    elevation: 6,
-  },
-  fabTxt: { color: '#fff', fontSize: 17, fontWeight: '700' },
-  tabs: {
-    position: 'absolute',
-    left: 0,
-    right: 0,
-    bottom: 0,
-    flexDirection: 'row',
-    backgroundColor: '#fff',
-    paddingTop: 8,
-    borderTopWidth: 1,
-    borderTopColor: '#e2e8f0',
-  },
-  tab: { flex: 1, alignItems: 'center', paddingVertical: 8 },
-  tabTxt: { fontSize: 15, color: '#94a3b8', fontWeight: '700' },
-  tabOn: { color: '#0f172a' },
-});
+const makeStyles = (C: Palette) =>
+  StyleSheet.create({
+    root: { flex: 1, backgroundColor: C.bg, paddingHorizontal: 16 },
+    center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
+    fab: {
+      position: 'absolute',
+      alignSelf: 'center',
+      backgroundColor: '#4f46e5',
+      paddingHorizontal: 26,
+      paddingVertical: 14,
+      borderRadius: 30,
+      elevation: 6,
+    },
+    fabTxt: { color: '#fff', fontSize: 17, fontWeight: '700' },
+    tabs: {
+      position: 'absolute',
+      left: 0,
+      right: 0,
+      bottom: 0,
+      flexDirection: 'row',
+      backgroundColor: C.card,
+      paddingTop: 8,
+      borderTopWidth: 1,
+      borderTopColor: C.border,
+    },
+    tab: { flex: 1, alignItems: 'center', paddingVertical: 8 },
+    tabTxt: { fontSize: 15, color: C.faint, fontWeight: '700' },
+    tabOn: { color: C.text },
+  });

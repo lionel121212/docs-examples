@@ -13,6 +13,7 @@ import {
 } from 'react-native';
 import { authenticate, AuthResult } from './account';
 import { StrKey, useI18n } from './i18n';
+import { Palette, useStyles, useTheme } from './theme';
 
 type Props = {
   visible: boolean;
@@ -33,6 +34,8 @@ const ERRORS: Record<string, StrKey> = {
 };
 
 export function AccountScreen({ visible, email, onClose, onLoggedIn, onLogout }: Props) {
+  const s = useStyles(makeStyles);
+  const C = useTheme();
   const { t, dir } = useI18n();
   const [mode, setMode] = useState<'login' | 'register'>('login');
   const [mail, setMail] = useState('');
@@ -72,7 +75,7 @@ export function AccountScreen({ visible, email, onClose, onLoggedIn, onLogout }:
   return (
     <Modal visible={visible} animationType="slide" onRequestClose={onClose}>
       <KeyboardAvoidingView
-        style={{ flex: 1, backgroundColor: '#f8fafc', direction: dir }}
+        style={{ flex: 1, backgroundColor: C.bg, direction: dir }}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       >
         <ScrollView contentContainerStyle={s.wrap} keyboardShouldPersistTaps="handled">
@@ -175,31 +178,32 @@ export function AccountScreen({ visible, email, onClose, onLoggedIn, onLogout }:
   );
 }
 
-const s = StyleSheet.create({
-  wrap: { padding: 20, paddingTop: 52, flexGrow: 1 },
-  h1: { fontSize: 28, fontWeight: '900', color: '#0f172a', marginBottom: 12 },
-  hint: { fontSize: 15, color: '#475569', marginBottom: 16, lineHeight: 21 },
-  tabs: { flexDirection: 'row', backgroundColor: '#e2e8f0', borderRadius: 14, padding: 4, marginBottom: 8 },
-  tab: { flex: 1, paddingVertical: 10, alignItems: 'center', borderRadius: 11 },
-  tabOn: { backgroundColor: '#fff' },
-  tabTxt: { fontWeight: '700', color: '#64748b' },
-  tabTxtOn: { color: '#4f46e5' },
-  label: { fontSize: 14, fontWeight: '700', color: '#475569', marginTop: 14, marginBottom: 6 },
-  input: { backgroundColor: '#fff', borderWidth: 1, borderColor: '#cbd5e1', borderRadius: 12, padding: 13, fontSize: 17 },
-  small: { fontSize: 12, color: '#94a3b8', marginTop: 4 },
-  error: { color: '#dc2626', marginTop: 10, fontWeight: '600' },
-  primary: { backgroundColor: '#4f46e5', borderRadius: 14, paddingVertical: 15, alignItems: 'center', marginTop: 18 },
-  primaryTxt: { color: '#fff', fontSize: 17, fontWeight: '900' },
-  card: { backgroundColor: '#fff', borderRadius: 18, padding: 16, gap: 6, borderWidth: 1, borderColor: '#e2e8f0' },
-  me: { fontSize: 17, fontWeight: '800', color: '#0f172a' },
-  note: { fontSize: 13, color: '#64748b' },
-  logout: { marginTop: 16, borderWidth: 1.5, borderColor: '#dc2626', borderRadius: 14, paddingVertical: 14, alignItems: 'center' },
-  logoutTxt: { color: '#dc2626', fontWeight: '800', fontSize: 16 },
-  warnCard: { borderColor: '#f59e0b', backgroundColor: '#fffbeb' },
-  warnTitle: { fontSize: 18, fontWeight: '900', color: '#92400e' },
-  warnBody: { fontSize: 15, color: '#78350f', lineHeight: 21 },
-  danger: { backgroundColor: '#dc2626', borderRadius: 14, paddingVertical: 15, alignItems: 'center', marginTop: 16 },
-  dangerTxt: { color: '#fff', fontSize: 16, fontWeight: '900' },
-  secondary: { paddingVertical: 14, alignItems: 'center' },
-  secondaryTxt: { color: '#475569', fontSize: 15, fontWeight: '700' },
-});
+const makeStyles = (C: Palette) =>
+  StyleSheet.create({
+    wrap: { padding: 20, paddingTop: 52, flexGrow: 1 },
+    h1: { fontSize: 28, fontWeight: '900', color: C.text, marginBottom: 12 },
+    hint: { fontSize: 15, color: C.text2, marginBottom: 16, lineHeight: 21 },
+    tabs: { flexDirection: 'row', backgroundColor: C.border, borderRadius: 14, padding: 4, marginBottom: 8 },
+    tab: { flex: 1, paddingVertical: 10, alignItems: 'center', borderRadius: 11 },
+    tabOn: { backgroundColor: C.card },
+    tabTxt: { fontWeight: '700', color: C.muted },
+    tabTxtOn: { color: '#4f46e5' },
+    label: { fontSize: 14, fontWeight: '700', color: C.text2, marginTop: 14, marginBottom: 6 },
+    input: { backgroundColor: C.card, borderWidth: 1, borderColor: C.border2, borderRadius: 12, padding: 13, fontSize: 17, color: C.text },
+    small: { fontSize: 12, color: C.faint, marginTop: 4 },
+    error: { color: '#dc2626', marginTop: 10, fontWeight: '600' },
+    primary: { backgroundColor: '#4f46e5', borderRadius: 14, paddingVertical: 15, alignItems: 'center', marginTop: 18 },
+    primaryTxt: { color: '#fff', fontSize: 17, fontWeight: '900' },
+    card: { backgroundColor: C.card, borderRadius: 18, padding: 16, gap: 6, borderWidth: 1, borderColor: C.border },
+    me: { fontSize: 17, fontWeight: '800', color: C.text },
+    note: { fontSize: 13, color: C.muted },
+    logout: { marginTop: 16, borderWidth: 1.5, borderColor: '#dc2626', borderRadius: 14, paddingVertical: 14, alignItems: 'center' },
+    logoutTxt: { color: '#dc2626', fontWeight: '800', fontSize: 16 },
+    warnCard: { borderColor: '#f59e0b', backgroundColor: '#fffbeb' },
+    warnTitle: { fontSize: 18, fontWeight: '900', color: '#92400e' },
+    warnBody: { fontSize: 15, color: '#78350f', lineHeight: 21 },
+    danger: { backgroundColor: '#dc2626', borderRadius: 14, paddingVertical: 15, alignItems: 'center', marginTop: 16 },
+    dangerTxt: { color: '#fff', fontSize: 16, fontWeight: '900' },
+    secondary: { paddingVertical: 14, alignItems: 'center' },
+    secondaryTxt: { color: C.text2, fontSize: 15, fontWeight: '700' },
+  });

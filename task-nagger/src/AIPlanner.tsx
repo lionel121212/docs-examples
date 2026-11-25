@@ -18,6 +18,7 @@ import { TaskIcon } from './TaskIcon';
 import { authHeaders } from './account';
 import { useI18n } from './i18n';
 import { Category, PALETTE, Task } from './types';
+import { Palette, useStyles, useTheme } from './theme';
 
 const PLANNER_URL: string = (Constants.expoConfig?.extra as any)?.plannerUrl ?? '';
 
@@ -37,6 +38,8 @@ type Props = {
 };
 
 export function AIPlanner({ visible, categories, onClose, onAdd, onUpgrade }: Props) {
+  const s = useStyles(makeStyles);
+  const C = useTheme();
   const { t, lang, days, dir } = useI18n();
   const EXAMPLES = [t('planner_ex1'), t('planner_ex2')];
   const [text, setText] = useState('');
@@ -124,7 +127,7 @@ export function AIPlanner({ visible, categories, onClose, onAdd, onUpgrade }: Pr
   return (
     <Modal visible={visible} animationType="slide" onRequestClose={onClose}>
       <KeyboardAvoidingView
-        style={{ flex: 1, backgroundColor: '#fff', direction: dir }}
+        style={{ flex: 1, backgroundColor: C.bg, direction: dir }}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       >
         <ScrollView contentContainerStyle={s.wrap} keyboardShouldPersistTaps="handled">
@@ -231,26 +234,27 @@ export function AIPlanner({ visible, categories, onClose, onAdd, onUpgrade }: Pr
   );
 }
 
-const s = StyleSheet.create({
-  wrap: { padding: 20, paddingTop: 52, flexGrow: 1 },
-  h1: { fontSize: 28, fontWeight: '800', color: '#0f172a' },
-  sub: { fontSize: 15, color: '#64748b', marginTop: 6, marginBottom: 14 },
-  input: { borderWidth: 1, borderColor: '#cbd5e1', borderRadius: 14, padding: 14, fontSize: 17, minHeight: 130 },
-  example: { backgroundColor: '#eef2ff', borderRadius: 12, padding: 10, width: 230, alignSelf: 'flex-start' },
-  exampleTxt: { fontSize: 13, color: '#4338ca' },
-  go: { backgroundColor: '#4f46e5', borderRadius: 14, padding: 16, alignItems: 'center', marginTop: 8 },
-  goTxt: { color: '#fff', fontSize: 18, fontWeight: '800' },
-  wait: { textAlign: 'center', color: '#64748b', marginTop: 8 },
-  error: { backgroundColor: '#fef2f2', color: '#b91c1c', padding: 12, borderRadius: 12, marginTop: 12 },
-  paywall: { backgroundColor: '#fefce8', borderRadius: 14, padding: 14, marginTop: 12 },
-  payTitle: { fontSize: 17, fontWeight: '800', marginBottom: 4 },
-  payTxt: { fontSize: 14, color: '#555' },
-  summary: { fontSize: 15, color: '#334155', backgroundColor: '#f1f5f9', padding: 12, borderRadius: 12, marginBottom: 10 },
-  row: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 8 },
-  check: { width: 26, height: 26, borderRadius: 8, borderWidth: 2, alignItems: 'center', justifyContent: 'center' },
-  tick: { color: '#fff', fontWeight: '900' },
-  title: { fontSize: 16, fontWeight: '700' },
-  meta: { fontSize: 13, color: '#64748b' },
-  secondary: { padding: 14, alignItems: 'center' },
-  secondaryTxt: { color: '#475569', fontSize: 15 },
-});
+const makeStyles = (C: Palette) =>
+  StyleSheet.create({
+    wrap: { padding: 20, paddingTop: 52, flexGrow: 1 },
+    h1: { fontSize: 28, fontWeight: '800', color: C.text },
+    sub: { fontSize: 15, color: C.muted, marginTop: 6, marginBottom: 14 },
+    input: { borderWidth: 1, borderColor: C.border2, borderRadius: 14, padding: 14, fontSize: 17, minHeight: 130, color: C.text },
+    example: { backgroundColor: C.soft, borderRadius: 12, padding: 10, width: 230, alignSelf: 'flex-start' },
+    exampleTxt: { fontSize: 13, color: '#4338ca' },
+    go: { backgroundColor: '#4f46e5', borderRadius: 14, padding: 16, alignItems: 'center', marginTop: 8 },
+    goTxt: { color: '#fff', fontSize: 18, fontWeight: '800' },
+    wait: { textAlign: 'center', color: C.muted, marginTop: 8 },
+    error: { backgroundColor: '#fef2f2', color: '#b91c1c', padding: 12, borderRadius: 12, marginTop: 12 },
+    paywall: { backgroundColor: '#fefce8', borderRadius: 14, padding: 14, marginTop: 12 },
+    payTitle: { fontSize: 17, fontWeight: '800', marginBottom: 4, color: C.text },
+    payTxt: { fontSize: 14, color: C.text2 },
+    summary: { fontSize: 15, color: C.text2, backgroundColor: C.bg, padding: 12, borderRadius: 12, marginBottom: 10 },
+    row: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 8 },
+    check: { width: 26, height: 26, borderRadius: 8, borderWidth: 2, alignItems: 'center', justifyContent: 'center' },
+    tick: { color: '#fff', fontWeight: '900' },
+    title: { fontSize: 16, fontWeight: '700', color: C.text },
+    meta: { fontSize: 13, color: C.muted },
+    secondary: { padding: 14, alignItems: 'center' },
+    secondaryTxt: { color: C.text2, fontSize: 15 },
+  });

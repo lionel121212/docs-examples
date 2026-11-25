@@ -5,6 +5,7 @@ import { isScheduled } from './stats';
 import { TaskIcon } from './TaskIcon';
 import { useI18n } from './i18n';
 import { Category, DoneMap, Task } from './types';
+import { Palette, useStyles } from './theme';
 
 type Props = {
   tasks: Task[];
@@ -22,6 +23,7 @@ function startOfWeek(d: Date): Date {
 
 /** Big weekly table: rows = tasks, columns = days. Tap a cell to tick it (today and past days). */
 export function WeekTable({ tasks, done, categories, onToggle, onEdit }: Props) {
+  const s = useStyles(makeStyles);
   const { t, days: dayNames, dir, rtl } = useI18n();
   const [offset, setOffset] = useState(0);
   const today = new Date();
@@ -132,28 +134,29 @@ export function WeekTable({ tasks, done, categories, onToggle, onEdit }: Props) 
 }
 
 const NAME_W = 104;
-const s = StyleSheet.create({
-  nav: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 28, marginBottom: 10 },
-  title: { fontSize: 24, fontWeight: '800', textAlign: 'center' },
-  back: { fontSize: 12, color: '#2563eb', textAlign: 'center' },
-  arrow: { padding: 10 },
-  arrowTxt: { fontSize: 32, color: '#2563eb' },
-  table: { backgroundColor: '#fff', borderRadius: 16, padding: 8 },
-  row: { flexDirection: 'row', alignItems: 'center', marginBottom: 6 },
-  nameCol: { width: NAME_W, flexDirection: 'row', alignItems: 'center', gap: 6, paddingEnd: 4 },
-  headCell: { flex: 1, alignItems: 'center', paddingVertical: 4, borderRadius: 10, marginHorizontal: 1 },
-  headToday: { backgroundColor: '#0f172a' },
-  dayName: { fontSize: 13, fontWeight: '800', color: '#334155' },
-  dayNum: { fontSize: 11, color: '#64748b' },
-  dayCount: { fontSize: 10, color: '#94a3b8', height: 12 },
-  catRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 8, marginBottom: 6 },
-  dot: { width: 10, height: 10, borderRadius: 5 },
-  catTxt: { fontWeight: '800', fontSize: 13, color: '#334155' },
-  taskName: { fontSize: 12, fontWeight: '700', color: '#0f172a' },
-  taskTime: { fontSize: 10, color: '#94a3b8' },
-  cell: { flex: 1, aspectRatio: 1, borderRadius: 10, marginHorizontal: 1, alignItems: 'center', justifyContent: 'center', maxHeight: 44 },
-  cellOn: { backgroundColor: '#f8fafc' },
-  dash: { color: '#cbd5e1', fontSize: 18 },
-  mark: { fontSize: 18, fontWeight: '900' },
-  hint: { fontSize: 12, color: '#94a3b8', textAlign: 'center', marginTop: 10 },
-});
+const makeStyles = (C: Palette) =>
+  StyleSheet.create({
+    nav: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 28, marginBottom: 10 },
+    title: { fontSize: 24, fontWeight: '800', textAlign: 'center', color: C.text },
+    back: { fontSize: 12, color: '#2563eb', textAlign: 'center' },
+    arrow: { padding: 10 },
+    arrowTxt: { fontSize: 32, color: '#2563eb' },
+    table: { backgroundColor: C.card, borderRadius: 16, padding: 8 },
+    row: { flexDirection: 'row', alignItems: 'center', marginBottom: 6 },
+    nameCol: { width: NAME_W, flexDirection: 'row', alignItems: 'center', gap: 6, paddingEnd: 4 },
+    headCell: { flex: 1, alignItems: 'center', paddingVertical: 4, borderRadius: 10, marginHorizontal: 1 },
+    headToday: { backgroundColor: '#0f172a' },
+    dayName: { fontSize: 13, fontWeight: '800', color: C.text2 },
+    dayNum: { fontSize: 11, color: C.muted },
+    dayCount: { fontSize: 10, color: C.faint, height: 12 },
+    catRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 8, marginBottom: 6 },
+    dot: { width: 10, height: 10, borderRadius: 5 },
+    catTxt: { fontWeight: '800', fontSize: 13, color: C.text2 },
+    taskName: { fontSize: 12, fontWeight: '700', color: C.text },
+    taskTime: { fontSize: 10, color: C.faint },
+    cell: { flex: 1, aspectRatio: 1, borderRadius: 10, marginHorizontal: 1, alignItems: 'center', justifyContent: 'center', maxHeight: 44 },
+    cellOn: { backgroundColor: C.bg },
+    dash: { color: '#cbd5e1', fontSize: 18 },
+    mark: { fontSize: 18, fontWeight: '900', color: C.text },
+    hint: { fontSize: 12, color: C.faint, textAlign: 'center', marginTop: 10 },
+  });

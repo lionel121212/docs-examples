@@ -4,6 +4,7 @@ import { Modal, Platform, Pressable, ScrollView, StyleSheet, Switch, Text, View 
 import { LANGS, useI18n } from './i18n';
 import { FREE_TASK_LIMIT } from './premium';
 import { Prefs } from './prefs';
+import { Palette, useStyles } from './theme';
 
 type Props = {
   visible: boolean;
@@ -32,6 +33,7 @@ export function Settings({
   prefs,
   onPrefs,
 }: Props) {
+  const s = useStyles(makeStyles);
   const { t, lang, setLang, dir } = useI18n();
   return (
     <Modal visible={visible} animationType="slide" onRequestClose={onClose}>
@@ -144,6 +146,7 @@ export function Settings({
 }
 
 function MiniTime({ label, value, onChange }: { label: string; value: string; onChange: (v: string) => void }) {
+  const s = useStyles(makeStyles);
   const step = (d: number) => {
     const [h, m] = value.split(':').map(Number);
     const x = (((h * 60 + m + d) % 1440) + 1440) % 1440;
@@ -165,60 +168,70 @@ function MiniTime({ label, value, onChange }: { label: string; value: string; on
   );
 }
 
-const s = StyleSheet.create({
-  box: { backgroundColor: '#fff', borderRadius: 16, padding: 14, marginBottom: 20, borderWidth: 2, borderColor: '#e2e8f0' },
-  switchRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
-  sub: { color: '#64748b', fontSize: 13, marginTop: 2 },
-  divider: { height: 1, backgroundColor: '#e2e8f0', marginVertical: 12 },
-  timesRow: { flexDirection: 'row', gap: 10, marginTop: 10 },
-  mini: { flex: 1, backgroundColor: '#f1f5f9', borderRadius: 12, padding: 8, alignItems: 'center' },
-  miniRow: { flexDirection: 'row', alignItems: 'center', gap: 6, direction: 'ltr', marginTop: 4 },
-  miniBtn: { width: 32, height: 32, borderRadius: 16, backgroundColor: '#e0e7ff', alignItems: 'center', justifyContent: 'center' },
-  miniBtnTxt: { color: '#4f46e5', fontSize: 18, fontWeight: '800' },
-  miniVal: { fontSize: 18, fontWeight: '900', color: '#0f172a', minWidth: 58, textAlign: 'center' },
-  smallBtn: {
-    alignSelf: 'flex-start',
-    backgroundColor: '#eef2ff',
-    borderRadius: 10,
-    paddingHorizontal: 14,
-    paddingVertical: 8,
-    marginTop: 8,
-  },
-  smallBtnTxt: { color: '#4f46e5', fontWeight: '800' },
-  segment: { flexDirection: 'row', backgroundColor: '#e2e8f0', borderRadius: 14, padding: 4 },
-  segBtn: { flex: 1, paddingVertical: 10, alignItems: 'center', borderRadius: 11 },
-  segOn: { backgroundColor: '#fff' },
-  segTxt: { fontWeight: '700', color: '#64748b' },
-  segTxtOn: { color: '#4f46e5' },
-  wrap: { padding: 20, paddingTop: 52, backgroundColor: '#f8fafc', flexGrow: 1 },
-  h1: { fontSize: 28, fontWeight: '900', color: '#0f172a', marginBottom: 16 },
-  plan: { backgroundColor: '#1e1b4b', borderRadius: 18, padding: 16, marginBottom: 20 },
-  upgrade: { backgroundColor: '#facc15', borderRadius: 12, paddingVertical: 12, alignItems: 'center', marginTop: 12 },
-  upgradeTxt: { color: '#1e1b4b', fontWeight: '900', fontSize: 16 },
-  planOn: { backgroundColor: '#facc15' },
-  planTxt: { color: '#fff', fontSize: 17, fontWeight: '900' },
-  planSub: { color: '#c7d2fe', marginTop: 10 },
-  codeRow: { flexDirection: 'row', gap: 8, marginTop: 8 },
-  codeInput: { flex: 1, minWidth: 0, backgroundColor: '#fff', borderRadius: 12, paddingHorizontal: 12, paddingVertical: 10, fontSize: 16 },
-  codeBtn: { backgroundColor: '#facc15', borderRadius: 12, paddingHorizontal: 16, justifyContent: 'center' },
-  codeBtnTxt: { color: '#1e1b4b', fontWeight: '900' },
-  bad: { color: '#fca5a5', marginTop: 6 },
-  label: { fontSize: 15, fontWeight: '800', color: '#64748b', marginBottom: 8 },
-  row: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-    backgroundColor: '#fff',
-    borderRadius: 16,
-    padding: 16,
-    marginBottom: 8,
-    borderWidth: 2,
-    borderColor: '#e2e8f0',
-  },
-  rowOn: { borderColor: '#4f46e5', backgroundColor: '#eef2ff' },
-  flag: { fontSize: 24 },
-  name: { flex: 1, fontSize: 17, fontWeight: '700', color: '#0f172a' },
-  check: { fontSize: 18, color: '#4f46e5', fontWeight: '900' },
-  close: { padding: 16, alignItems: 'center', marginTop: 12 },
-  closeTxt: { fontSize: 16, color: '#475569', fontWeight: '700' },
-});
+const makeStyles = (C: Palette) =>
+  StyleSheet.create({
+    box: { backgroundColor: C.card, borderRadius: 16, padding: 14, marginBottom: 20, borderWidth: 2, borderColor: C.border },
+    switchRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+    sub: { color: C.muted, fontSize: 13, marginTop: 2 },
+    divider: { height: 1, backgroundColor: C.border, marginVertical: 12 },
+    timesRow: { flexDirection: 'row', gap: 10, marginTop: 10 },
+    mini: { flex: 1, backgroundColor: C.bg, borderRadius: 12, padding: 8, alignItems: 'center' },
+    miniRow: { flexDirection: 'row', alignItems: 'center', gap: 6, direction: 'ltr', marginTop: 4 },
+    miniBtn: { width: 32, height: 32, borderRadius: 16, backgroundColor: '#e0e7ff', alignItems: 'center', justifyContent: 'center' },
+    miniBtnTxt: { color: '#4f46e5', fontSize: 18, fontWeight: '800' },
+    miniVal: { fontSize: 18, fontWeight: '900', color: C.text, minWidth: 58, textAlign: 'center' },
+    smallBtn: {
+      alignSelf: 'flex-start',
+      backgroundColor: C.soft,
+      borderRadius: 10,
+      paddingHorizontal: 14,
+      paddingVertical: 8,
+      marginTop: 8,
+    },
+    smallBtnTxt: { color: '#4f46e5', fontWeight: '800' },
+    segment: { flexDirection: 'row', backgroundColor: C.border, borderRadius: 14, padding: 4 },
+    segBtn: { flex: 1, paddingVertical: 10, alignItems: 'center', borderRadius: 11 },
+    segOn: { backgroundColor: C.card },
+    segTxt: { fontWeight: '700', color: C.muted },
+    segTxtOn: { color: '#4f46e5' },
+    wrap: { padding: 20, paddingTop: 52, backgroundColor: C.bg, flexGrow: 1 },
+    h1: { fontSize: 28, fontWeight: '900', color: C.text, marginBottom: 16 },
+    plan: { backgroundColor: '#1e1b4b', borderRadius: 18, padding: 16, marginBottom: 20 },
+    upgrade: { backgroundColor: '#facc15', borderRadius: 12, paddingVertical: 12, alignItems: 'center', marginTop: 12 },
+    upgradeTxt: { color: '#1e1b4b', fontWeight: '900', fontSize: 16 },
+    planOn: { backgroundColor: '#facc15' },
+    planTxt: { color: '#fff', fontSize: 17, fontWeight: '900' },
+    planSub: { color: '#c7d2fe', marginTop: 10 },
+    codeRow: { flexDirection: 'row', gap: 8, marginTop: 8 },
+    codeInput: {
+      flex: 1,
+      minWidth: 0,
+      backgroundColor: C.card,
+      borderRadius: 12,
+      paddingHorizontal: 12,
+      paddingVertical: 10,
+      fontSize: 16,
+      color: C.text,
+    },
+    codeBtn: { backgroundColor: '#facc15', borderRadius: 12, paddingHorizontal: 16, justifyContent: 'center' },
+    codeBtnTxt: { color: '#1e1b4b', fontWeight: '900' },
+    bad: { color: '#fca5a5', marginTop: 6 },
+    label: { fontSize: 15, fontWeight: '800', color: C.muted, marginBottom: 8 },
+    row: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 12,
+      backgroundColor: C.card,
+      borderRadius: 16,
+      padding: 16,
+      marginBottom: 8,
+      borderWidth: 2,
+      borderColor: C.border,
+    },
+    rowOn: { borderColor: '#4f46e5', backgroundColor: C.soft },
+    flag: { fontSize: 24, color: C.text },
+    name: { flex: 1, fontSize: 17, fontWeight: '700', color: C.text },
+    check: { fontSize: 18, color: '#4f46e5', fontWeight: '900' },
+    close: { padding: 16, alignItems: 'center', marginTop: 12 },
+    closeTxt: { fontSize: 16, color: C.text2, fontWeight: '700' },
+  });

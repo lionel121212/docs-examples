@@ -7,6 +7,7 @@ import { TaskIcon } from './TaskIcon';
 import { Aurora, Confetti, GlowPulse, Shimmer } from './fx';
 import { useI18n } from './i18n';
 import { Category, DoneMap, Task } from './types';
+import { Palette, useStyles } from './theme';
 
 export type Status = 'done' | 'late' | 'pending' | 'none';
 export type Row = Task & { status: Status };
@@ -79,6 +80,7 @@ function Ring({ pct, size = 76 }: { pct: number; size?: number }) {
 }
 
 function WeekStrip({ tasks, done, now }: { tasks: Task[]; done: DoneMap; now: Date }) {
+  const s = useStyles(makeStyles);
   const { days } = useI18n();
   const start = new Date(now.getFullYear(), now.getMonth(), now.getDate() - now.getDay());
   const todayK = dateKey(now);
@@ -128,6 +130,7 @@ function Exercises({
   onToggle: (id: string) => void;
   light?: boolean;
 }) {
+  const s = useStyles(makeStyles);
   if (!t.exercises?.length) return null;
   return (
     <View style={{ marginTop: 10, gap: 2 }}>
@@ -162,6 +165,7 @@ export function TodayView({
   onAI,
   onSettings,
 }: Props) {
+  const s = useStyles(makeStyles);
   const { t, locale, rtl } = useI18n();
   const [showDone, setShowDone] = useState(false);
   const [burst, setBurst] = useState(0);
@@ -299,78 +303,79 @@ export function TodayView({
   );
 }
 
-const s = StyleSheet.create({
-  topRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 14 },
-  hi: { fontSize: 15, color: '#64748b' },
-  h1: { fontSize: 26, fontWeight: '800', color: '#0f172a' },
-  iconBtn: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: '#fff',
-    alignItems: 'center',
-    justifyContent: 'center',
-    elevation: 2,
-    shadowColor: '#000',
-    shadowOpacity: 0.08,
-    shadowRadius: 6,
-    shadowOffset: { width: 0, height: 2 },
-  },
-  aiPill: {
-    height: 40,
-    borderRadius: 20,
-    paddingHorizontal: 14,
-    backgroundColor: '#4f46e5',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  aiPillTxt: { color: '#fff', fontWeight: '800', fontSize: 14 },
-  iconBtnTxt: { fontSize: 20, color: '#4f46e5', fontWeight: '800' },
-  heroCard: { backgroundColor: '#4338ca', borderRadius: 22, padding: 16, gap: 14, overflow: 'hidden' },
-  hero: { flexDirection: 'row', alignItems: 'center', gap: 14 },
-  week: { flexDirection: 'row', justifyContent: 'space-between', borderTopWidth: 1, borderTopColor: '#ffffff26', paddingTop: 12 },
-  weekDay: { alignItems: 'center', gap: 5, flex: 1 },
-  weekLbl: { color: '#c7d2fe', fontSize: 12, fontWeight: '700' },
-  weekDot: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
-    backgroundColor: '#ffffff22',
-    overflow: 'hidden',
-    justifyContent: 'flex-end',
-    alignItems: 'center',
-  },
-  weekFill: { position: 'absolute', bottom: 0, left: 0, right: 0, backgroundColor: '#a5b4fc' },
-  weekTick: { position: 'absolute', top: 5, color: '#14532d', fontWeight: '900', fontSize: 13 },
-  nag: { color: '#fff', fontSize: 13, marginTop: 12, fontWeight: '700', opacity: 0.9 },
-  heroBig: { color: '#fff', fontSize: 22, fontWeight: '900' },
-  heroSmall: { color: '#e0e7ff', fontSize: 14, marginTop: 2 },
-  streak: { alignItems: 'center', backgroundColor: '#ffffff22', borderRadius: 14, paddingHorizontal: 10, paddingVertical: 8 },
-  streakN: { color: '#fff', fontSize: 18, fontWeight: '900' },
-  streakL: { color: '#e0e7ff', fontSize: 11 },
-  warn: { backgroundColor: '#fef3c7', padding: 12, borderRadius: 10, marginTop: 12 },
-  section: { fontSize: 15, fontWeight: '800', color: '#334155', marginTop: 20, marginBottom: 8 },
-  focus: { borderRadius: 22, padding: 16 },
-  focusIcon: { backgroundColor: '#ffffff26', borderRadius: 20 },
-  focusTitle: { color: '#fff', fontSize: 22, fontWeight: '900' },
-  focusMeta: { color: '#ffffffd9', fontSize: 14, marginTop: 2, fontWeight: '600' },
-  focusBtn: { backgroundColor: '#fff', borderRadius: 14, paddingVertical: 13, alignItems: 'center', marginTop: 14, overflow: 'hidden' },
-  focusBtnTxt: { fontSize: 17, fontWeight: '900' },
-  row: { flexDirection: 'row', alignItems: 'center', gap: 10 },
-  card: { backgroundColor: '#fff', borderRadius: 16, padding: 12, marginBottom: 8 },
-  cardLate: { backgroundColor: '#fff5f5' },
-  time: { width: 42, fontSize: 13, fontWeight: '800', color: '#64748b', textAlign: 'center' },
-  line: { width: 4, alignSelf: 'stretch', borderRadius: 2 },
-  title: { fontSize: 16, fontWeight: '700', color: '#0f172a' },
-  meta: { fontSize: 12, color: '#64748b', marginTop: 2 },
-  circle: { width: 30, height: 30, borderRadius: 15, borderWidth: 2.5 },
-  doneHead: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  chev: { fontSize: 16, color: '#94a3b8', marginTop: 12 },
-  empty: { textAlign: 'center', fontSize: 18, marginTop: 30 },
-  exRow: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 6 },
-  check: { width: 24, height: 24, borderRadius: 7, borderWidth: 2, alignItems: 'center', justifyContent: 'center' },
-  tick: { color: '#fff', fontWeight: '900', fontSize: 14 },
-  exName: { flex: 1, fontSize: 15, fontWeight: '600', color: '#0f172a' },
-  exDone: { textDecorationLine: 'line-through', opacity: 0.7 },
-  exDetail: { fontSize: 13, color: '#64748b' },
-});
+const makeStyles = (C: Palette) =>
+  StyleSheet.create({
+    topRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 14 },
+    hi: { fontSize: 15, color: C.muted },
+    h1: { fontSize: 26, fontWeight: '800', color: C.text },
+    iconBtn: {
+      width: 40,
+      height: 40,
+      borderRadius: 20,
+      backgroundColor: C.card,
+      alignItems: 'center',
+      justifyContent: 'center',
+      elevation: 2,
+      shadowColor: '#000',
+      shadowOpacity: 0.08,
+      shadowRadius: 6,
+      shadowOffset: { width: 0, height: 2 },
+    },
+    aiPill: {
+      height: 40,
+      borderRadius: 20,
+      paddingHorizontal: 14,
+      backgroundColor: '#4f46e5',
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    aiPillTxt: { color: '#fff', fontWeight: '800', fontSize: 14 },
+    iconBtnTxt: { fontSize: 20, color: '#4f46e5', fontWeight: '800' },
+    heroCard: { backgroundColor: '#4338ca', borderRadius: 22, padding: 16, gap: 14, overflow: 'hidden' },
+    hero: { flexDirection: 'row', alignItems: 'center', gap: 14 },
+    week: { flexDirection: 'row', justifyContent: 'space-between', borderTopWidth: 1, borderTopColor: '#ffffff26', paddingTop: 12 },
+    weekDay: { alignItems: 'center', gap: 5, flex: 1 },
+    weekLbl: { color: '#c7d2fe', fontSize: 12, fontWeight: '700' },
+    weekDot: {
+      width: 28,
+      height: 28,
+      borderRadius: 14,
+      backgroundColor: '#ffffff22',
+      overflow: 'hidden',
+      justifyContent: 'flex-end',
+      alignItems: 'center',
+    },
+    weekFill: { position: 'absolute', bottom: 0, left: 0, right: 0, backgroundColor: '#a5b4fc' },
+    weekTick: { position: 'absolute', top: 5, color: '#14532d', fontWeight: '900', fontSize: 13 },
+    nag: { color: '#fff', fontSize: 13, marginTop: 12, fontWeight: '700', opacity: 0.9 },
+    heroBig: { color: '#fff', fontSize: 22, fontWeight: '900' },
+    heroSmall: { color: '#e0e7ff', fontSize: 14, marginTop: 2 },
+    streak: { alignItems: 'center', backgroundColor: '#ffffff22', borderRadius: 14, paddingHorizontal: 10, paddingVertical: 8 },
+    streakN: { color: '#fff', fontSize: 18, fontWeight: '900' },
+    streakL: { color: '#e0e7ff', fontSize: 11 },
+    warn: { backgroundColor: '#fef3c7', padding: 12, borderRadius: 10, marginTop: 12 },
+    section: { fontSize: 15, fontWeight: '800', color: C.text2, marginTop: 20, marginBottom: 8 },
+    focus: { borderRadius: 22, padding: 16 },
+    focusIcon: { backgroundColor: '#ffffff26', borderRadius: 20 },
+    focusTitle: { color: '#fff', fontSize: 22, fontWeight: '900' },
+    focusMeta: { color: '#ffffffd9', fontSize: 14, marginTop: 2, fontWeight: '600' },
+    focusBtn: { backgroundColor: C.card, borderRadius: 14, paddingVertical: 13, alignItems: 'center', marginTop: 14, overflow: 'hidden' },
+    focusBtnTxt: { fontSize: 17, fontWeight: '900', color: C.text },
+    row: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+    card: { backgroundColor: C.card, borderRadius: 16, padding: 12, marginBottom: 8 },
+    cardLate: { backgroundColor: '#fff5f5' },
+    time: { width: 42, fontSize: 13, fontWeight: '800', color: C.muted, textAlign: 'center' },
+    line: { width: 4, alignSelf: 'stretch', borderRadius: 2 },
+    title: { fontSize: 16, fontWeight: '700', color: C.text },
+    meta: { fontSize: 12, color: C.muted, marginTop: 2 },
+    circle: { width: 30, height: 30, borderRadius: 15, borderWidth: 2.5 },
+    doneHead: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+    chev: { fontSize: 16, color: C.faint, marginTop: 12 },
+    empty: { textAlign: 'center', fontSize: 18, marginTop: 30, color: C.text },
+    exRow: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 6 },
+    check: { width: 24, height: 24, borderRadius: 7, borderWidth: 2, alignItems: 'center', justifyContent: 'center' },
+    tick: { color: '#fff', fontWeight: '900', fontSize: 14 },
+    exName: { flex: 1, fontSize: 15, fontWeight: '600', color: C.text },
+    exDone: { textDecorationLine: 'line-through', opacity: 0.7 },
+    exDetail: { fontSize: 13, color: C.muted },
+  });
