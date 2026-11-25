@@ -1,5 +1,4 @@
-import Anthropic from "@anthropic-ai/sdk";
-import { zodOutputFormat } from "@anthropic-ai/sdk/helpers/zod";
+import { AiError, generateJson } from "./llm";
 import { z } from "zod";
 
 export const CATEGORY_IDS = ["health", "study", "sport", "gaming", "other"] as const;
@@ -34,27 +33,10 @@ Rules:
 
 export type PlanRequest = { request: string; today?: string; lang?: string };
 
-/** Ask Claude for a structured plan. Throws Anthropic.APIError subclasses on API failures. */
-export async function makePlan(client: Anthropic, req: PlanRequest): Promise<Plan> {
-  // Haiku 5.5: cheap and fast, plenty for turning a description into a schedule.
-  const response = await client.messages.parse({
-    model: "claude-haiku-5-5",
-    max_tokens: 16000,
-    system: SYSTEM,
-    output_config: { effort: "medium", format: zodOutputFormat(PlanSchema) },
-    messages: [
-      {
-        role: "user",
-        content: `${req.today ? `Today is ${req.today}.\n` : ""}${req.lang ? `App language: ${req.lang}\n` : ""}<request>\n${req.request}\n</request>`,
-      },
-    ],
-  });
-
-  if (response.stop_reason === "refusal") throw new PlanError(422, "refused");
-  if (response.stop_reason === "max_tokens") throw new PlanError(502, "too_long");
-  const plan = response.parsed_output;
-  if (!plan) throw new PlanError(502, "unparseable");
-  return sanitize(plan);
+/** Ask the model for a structured plan. */
+export async function makePlan(ai: Ai | undefined, req: PlanRequest): Promise<Plan> {
+  const user = `${req.today ? `Today is ${req.today}.\n` : ""}${req.lang ? `App language: ${req.lang}\n` : ""}<request>\n${req.request}\n</request>`;
+  return sanitize(await generateJson(ai, SYSTEM, user, PlanSchema, "plan"));
 }
 
 /** Clean up anything the schema can't express (time format, day range, limits). */
@@ -79,13 +61,4 @@ export function sanitize(plan: Plan): Plan {
     .filter((t): t is NonNullable<typeof t> => t !== null)
     .slice(0, 15);
   return { summary: plan.summary.slice(0, 500), tasks };
-}
-
-export class PlanError extends Error {
-  constructor(
-    public status: number,
-    public code: string,
-  ) {
-    super(code);
-  }
 }

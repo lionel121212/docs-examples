@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import worker from "../src/index";
 import { makeD1 } from "./d1-sqlite";
 
-const env = { ANTHROPIC_API_KEY: "x", DB: makeD1() };
+const env = { DB: makeD1() };
 const call = async (path: string, token: string | null, method = "GET", body?: unknown) => {
   const r = await worker.fetch(
     new Request("https://x" + path, {

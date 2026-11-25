@@ -5,7 +5,8 @@ import { authenticate } from "./auth";
  * - Testers: a code from ACCESS_CODES (comma separated), so the planner can be tried before the stores exist.
  */
 export type Env = {
-  ANTHROPIC_API_KEY: string;
+  /** Workers AI binding (free tier) */
+  AI?: Ai;
   REVENUECAT_SECRET?: string;
   ENTITLEMENT_ID?: string; // defaults to "premium"
   ACCESS_CODES?: string;

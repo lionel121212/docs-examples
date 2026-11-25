@@ -1,7 +1,5 @@
-import Anthropic from "@anthropic-ai/sdk";
-import { zodOutputFormat } from "@anthropic-ai/sdk/helpers/zod";
+import { generateJson } from "./llm";
 import { z } from "zod";
-import { PlanError } from "./plan";
 
 const LANG_NAMES: Record<string, string> = { he: "Hebrew", en: "English", ar: "Arabic", ru: "Russian", es: "Spanish" };
 
@@ -33,18 +31,13 @@ const SYSTEM = `You are a friendly habit coach inside a reminder app. You get on
 Give a short headline and exactly 3 concrete, specific tips (name the task, suggest a time change, splitting it, fewer days, or celebrating a win).
 Be encouraging and honest. No generic advice. Write in the requested language.`;
 
-export async function makeCoach(client: Anthropic, week: Week, lang: string): Promise<Coach> {
-  const response = await client.messages.parse({
-    model: "claude-haiku-5-5",
-    max_tokens: 16000,
-    system: SYSTEM,
-    output_config: { effort: "low", format: zodOutputFormat(CoachSchema) },
-    messages: [
-      { role: "user", content: `Language: ${LANG_NAMES[lang] ?? "English"}\n<week>\n${JSON.stringify(week)}\n</week>` },
-    ],
-  });
-  if (response.stop_reason === "refusal") throw new PlanError(422, "refused");
-  const out = response.parsed_output;
-  if (!out) throw new PlanError(502, "unparseable");
+export async function makeCoach(ai: Ai | undefined, week: Week, lang: string): Promise<Coach> {
+  const out = await generateJson(
+    ai,
+    SYSTEM,
+    `Language: ${LANG_NAMES[lang] ?? "English"}\n<week>\n${JSON.stringify(week)}\n</week>`,
+    CoachSchema,
+    "coach",
+  );
   return { headline: out.headline.slice(0, 300), tips: out.tips.slice(0, 3).map((t) => t.slice(0, 300)) };
 }

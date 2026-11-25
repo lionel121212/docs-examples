@@ -12,7 +12,6 @@
     "lint": "echo 'Type checking runs with dependencies installed: see build-task-nagger-apk.yml / npm run typecheck'"
   },
   "dependencies": {
-    "@anthropic-ai/sdk": "^1.14.0",
     "zod": "^4.6.7"
   },
   "devDependencies": {

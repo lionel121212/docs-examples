@@ -1,10 +1,10 @@
-import Anthropic from "@anthropic-ai/sdk";
 import { handleAuth, handleReset, handleSync, redeemCode } from "./auth";
 import { Env, isAllowed } from "./entitlement";
 import { handleBuddy } from "./buddy";
 import { makeCoach, WeekSchema } from "./coach";
 import { makeOnboarding, ProfileSchema } from "./onboard";
-import { makePlan, PlanError } from "./plan";
+import { AiError } from "./llm";
+import { makePlan } from "./plan";
 import { underLimit } from "./ratelimit";
 
 const MAX_REQUEST_CHARS = 2000;
@@ -49,22 +49,15 @@ export default {
     if (!text) return json(400, { error: "empty_request" });
     if (text.length > MAX_REQUEST_CHARS) return json(400, { error: "request_too_long" });
     const today = typeof body.today === "string" ? body.today.slice(0, 40) : undefined;
-
-    const client = new Anthropic({ apiKey: env.ANTHROPIC_API_KEY });
     try {
       const lang =
         typeof (body as { lang?: unknown }).lang === "string"
           ? String((body as { lang: string }).lang).slice(0, 5)
           : undefined;
-      const plan = await makePlan(client, { request: text, today, lang });
+      const plan = await makePlan(env.AI, { request: text, today, lang });
       return json(200, plan);
     } catch (e) {
-      if (e instanceof PlanError) return json(e.status, { error: e.code });
-      if (e instanceof Anthropic.RateLimitError) return json(503, { error: "busy" });
-      if (e instanceof Anthropic.APIError) {
-        console.error("anthropic error", e.status, e.message);
-        return json(502, { error: "ai_unavailable" });
-      }
+      if (e instanceof AiError) return json(e.status, { error: e.code });
       console.error(e);
       return json(500, { error: "internal" });
     }
@@ -87,13 +80,10 @@ async function onboard(req: Request, env: Env): Promise<Response> {
   const parsed = ProfileSchema.safeParse(body.profile);
   if (!parsed.success) return json(400, { error: "bad_profile" });
   const lang = typeof body.lang === "string" ? body.lang.slice(0, 5) : "en";
-  const client = new Anthropic({ apiKey: env.ANTHROPIC_API_KEY });
   try {
-    return json(200, await makeOnboarding(client, parsed.data, lang));
+    return json(200, await makeOnboarding(env.AI, parsed.data, lang));
   } catch (e) {
-    if (e instanceof PlanError) return json(e.status, { error: e.code });
-    if (e instanceof Anthropic.RateLimitError) return json(503, { error: "busy" });
-    if (e instanceof Anthropic.APIError) return json(502, { error: "ai_unavailable" });
+    if (e instanceof AiError) return json(e.status, { error: e.code });
     console.error(e);
     return json(500, { error: "internal" });
   }
@@ -114,11 +104,9 @@ async function coach(req: Request, env: Env): Promise<Response> {
   if (!week.success) return json(400, { error: "bad_week" });
   const lang = typeof body.lang === "string" ? body.lang.slice(0, 5) : "en";
   try {
-    return json(200, await makeCoach(new Anthropic({ apiKey: env.ANTHROPIC_API_KEY }), week.data, lang));
+    return json(200, await makeCoach(env.AI, week.data, lang));
   } catch (e) {
-    if (e instanceof PlanError) return json(e.status, { error: e.code });
-    if (e instanceof Anthropic.RateLimitError) return json(503, { error: "busy" });
-    if (e instanceof Anthropic.APIError) return json(502, { error: "ai_unavailable" });
+    if (e instanceof AiError) return json(e.status, { error: e.code });
     console.error(e);
     return json(500, { error: "internal" });
   }

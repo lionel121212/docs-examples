@@ -1,7 +1,6 @@
-import Anthropic from "@anthropic-ai/sdk";
-import { zodOutputFormat } from "@anthropic-ai/sdk/helpers/zod";
+import { generateJson } from "./llm";
 import { z } from "zod";
-import { PlanError, PlanSchema, sanitize } from "./plan";
+import { PlanSchema, sanitize } from "./plan";
 
 const LANG_NAMES: Record<string, string> = { he: "Hebrew", en: "English", ar: "Arabic", ru: "Russian", es: "Spanish" };
 
@@ -36,24 +35,15 @@ Return:
    - Days: 0=Sunday ... 6=Saturday. Times 24h HH:MM. Category ids: health, study, sport, gaming (hobbies), other.
 Write every text field in the requested language.`;
 
-export async function makeOnboarding(client: Anthropic, profile: Profile, lang: string): Promise<Onboard> {
+export async function makeOnboarding(ai: Ai | undefined, profile: Profile, lang: string): Promise<Onboard> {
   const language = LANG_NAMES[lang] ?? "English";
-  const response = await client.messages.parse({
-    model: "claude-haiku-5-5",
-    max_tokens: 16000,
-    system: SYSTEM,
-    output_config: { effort: "medium", format: zodOutputFormat(OnboardSchema) },
-    messages: [
-      {
-        role: "user",
-        content: `Language: ${language}\n<questionnaire>\n${JSON.stringify(profile)}\n</questionnaire>`,
-      },
-    ],
-  });
-  if (response.stop_reason === "refusal") throw new PlanError(422, "refused");
-  if (response.stop_reason === "max_tokens") throw new PlanError(502, "too_long");
-  const out = response.parsed_output;
-  if (!out) throw new PlanError(502, "unparseable");
+  const out = await generateJson(
+    ai,
+    SYSTEM,
+    `Language: ${language}\n<questionnaire>\n${JSON.stringify(profile)}\n</questionnaire>`,
+    OnboardSchema,
+    "onboarding",
+  );
   return {
     insight: out.insight.slice(0, 800),
     recommendations: out.recommendations.slice(0, 3).map((r) => r.slice(0, 200)),

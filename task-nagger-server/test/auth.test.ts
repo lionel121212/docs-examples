@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import worker from "../src/index";
 import { makeD1 } from "./d1-sqlite";
 
-const env = { ANTHROPIC_API_KEY: "x", ACCESS_CODES: "vip1", DB: makeD1() };
+const env = { ACCESS_CODES: "vip1", DB: makeD1() };
 const call = async (
   path: string,
   init: { method?: string; body?: unknown; token?: string; headers?: Record<string, string> } = {},
