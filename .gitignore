@@ -102,3 +102,4 @@ dist
 
 # task-nagger needs its lock file for reproducible APK builds
 !task-nagger/package-lock.json
+!task-nagger-server/package-lock.json
