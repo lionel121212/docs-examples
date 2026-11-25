@@ -17,7 +17,7 @@ const fakeFetch = (async (_url: any, init: any) => {
   sentBody = JSON.parse(init.body);
   return new Response(
     JSON.stringify({
-      id: "msg_1", type: "message", role: "assistant", model: "claude-opus-5-5",
+      id: "msg_1", type: "message", role: "assistant", model: "claude-haiku-5-5",
       content: [{ type: "text", text: JSON.stringify(fakePlan) }],
       stop_reason: "end_turn", stop_sequence: null,
       usage: { input_tokens: 10, output_tokens: 10 },
@@ -29,8 +29,8 @@ const fakeFetch = (async (_url: any, init: any) => {
 const client = new Anthropic({ apiKey: "test", fetch: fakeFetch });
 const plan = await makePlan(client, { request: "אני רוצה להתאמן 3 פעמים בשבוע", today: "2026-11-25" });
 
-assert.equal(sentBody.model, "claude-opus-5-5");
-assert.equal(sentBody.fallbacks, "default");
+assert.equal(sentBody.model, "claude-haiku-5-5");
+assert.equal(sentBody.fallbacks, undefined);
 assert.equal(sentBody.output_config.effort, "medium");
 assert.equal(sentBody.output_config.format.type, "json_schema");
 assert.equal(plan.tasks.length, 2, "invalid time dropped");

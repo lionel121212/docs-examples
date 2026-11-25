@@ -1,5 +1,5 @@
 import Anthropic from "@anthropic-ai/sdk";
-import { betaZodOutputFormat } from "@anthropic-ai/sdk/helpers/beta/zod";
+import { zodOutputFormat } from "@anthropic-ai/sdk/helpers/zod";
 import { z } from "zod";
 
 export const CATEGORY_IDS = ["health", "study", "sport", "gaming", "other"] as const;
@@ -36,13 +36,12 @@ export type PlanRequest = { request: string; today?: string };
 
 /** Ask Claude for a structured plan. Throws Anthropic.APIError subclasses on API failures. */
 export async function makePlan(client: Anthropic, req: PlanRequest): Promise<Plan> {
-  const response = await client.beta.messages.parse({
-    model: "claude-opus-5-5",
+  // Haiku 5.5: cheap and fast, plenty for turning a description into a schedule.
+  const response = await client.messages.parse({
+    model: "claude-haiku-5-5",
     max_tokens: 16000,
-    betas: ["server-side-fallback-2026-07-01"],
-    fallbacks: "default",
     system: SYSTEM,
-    output_config: { effort: "medium", format: betaZodOutputFormat(PlanSchema) },
+    output_config: { effort: "medium", format: zodOutputFormat(PlanSchema) },
     messages: [
       {
         role: "user",
