@@ -15,6 +15,7 @@ import {
 } from 'react-native';
 import { dateKey } from './dates';
 import { TaskIcon } from './TaskIcon';
+import { authHeaders } from './account';
 import { useI18n } from './i18n';
 import { Category, PALETTE, Task } from './types';
 
@@ -22,18 +23,6 @@ const PLANNER_URL: string = (Constants.expoConfig?.extra as any)?.plannerUrl ?? 
 
 type PlannedTask = { title: string; category: string; time: string; days: number[]; exercises: { name: string; detail: string }[] };
 type Plan = { summary: string; tasks: PlannedTask[] };
-
-async function getUserId(): Promise<string> {
-  try {
-    const existing = await AsyncStorage.getItem('userId');
-    if (existing) return existing;
-    const id = 'u_' + Date.now().toString(36) + Math.random().toString(36).slice(2, 10);
-    await AsyncStorage.setItem('userId', id);
-    return id;
-  } catch {
-    return 'anonymous';
-  }
-}
 
 function daysLabel(days: number[], names: string[], everyDay: string) {
   return days.length === 7 ? everyDay : days.map((d) => names[d]).join(' ');
@@ -83,7 +72,7 @@ export function AIPlanner({ visible, categories, onClose, onAdd }: Props) {
         method: 'POST',
         headers: {
           'content-type': 'application/json',
-          'x-app-user-id': await getUserId(),
+          ...(await authHeaders()),
           ...(code.trim() ? { 'x-access-code': code.trim() } : {}),
         },
         body: JSON.stringify({ request: text.trim(), today: new Date().toDateString(), lang }),

@@ -6,7 +6,20 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Alert, AppState, Pressable, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaProvider, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { dateKey, doneKey } from './src/dates';
-import { I18nProvider, LANGS, translate, useI18n } from './src/i18n';
+import {
+  clearLogin,
+  getEmail,
+  getToken,
+  lastSyncAt,
+  logout,
+  markSynced,
+  pullSync,
+  pushSync,
+  SessionRevoked,
+  SyncData,
+} from './src/account';
+import { AccountScreen } from './src/AccountScreen';
+import { I18nProvider, Lang, LANGS, translate, useI18n } from './src/i18n';
 import { Onboarding } from './src/Onboarding';
 import { FREE_TASK_LIMIT, loadPremium, roomFor } from './src/premium';
 import { cancelTodaysNags, rescheduleAll, setupNotifications } from './src/scheduler';
@@ -50,7 +63,9 @@ const DEFAULT_CAT_KEYS = { health: 'cat_health', study: 'cat_study', sport: 'cat
 
 function Main() {
   const insets = useSafeAreaInsets();
-  const { t, lang, dir } = useI18n();
+  const { t, lang, dir, setLang } = useI18n();
+  const [accountEmail, setAccountEmail] = useState<string | null>(null);
+  const [accountOpen, setAccountOpen] = useState(false);
   const [onboarding, setOnboarding] = useState<null | { first: boolean }>(null);
   const [settings, setSettings] = useState(false);
   const [premium, setPremium] = useState(false);
@@ -89,9 +104,13 @@ function Main() {
         setGranted(await setupNotifications(langRef.current));
         await resync(stored, d);
       }
+      if ((await getToken()) && (await getEmail())) {
+        setAccountEmail(await getEmail());
+        pullIfNewer();
+      }
       setReady(true);
     })();
-  }, [resync]);
+  }, [resync]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // language switch: rename the built-in categories and re-send notifications in the new language
   const prevLang = useRef(lang);
@@ -181,6 +200,89 @@ function Main() {
     await commitDone(next, t, date, all);
   };
 
+  /* ---------- account + cloud sync ---------- */
+  const applying = useRef(false);
+  const accountRef = useRef(accountEmail);
+  accountRef.current = accountEmail;
+
+  const onRevoked = async () => {
+    await clearLogin();
+    setAccountEmail(null);
+    setPremium(await loadPremium());
+    Alert.alert(t('revoked_title'), t('revoked_body'));
+  };
+
+  /** Replace local data with the account's copy (used after login on a new phone). */
+  const applyRemote = async (d: SyncData) => {
+    applying.current = true;
+    setTasks(d.tasks);
+    setCategories(d.categories);
+    setDone(d.done);
+    await Promise.all([saveTasks(d.tasks), saveCategories(d.categories), saveDone(d.done)]);
+    if (d.lang && LANGS.some((l) => l.code === d.lang)) setLang(d.lang as Lang);
+    await resync(d.tasks, d.done);
+    setTimeout(() => (applying.current = false), 3500);
+  };
+
+  async function pullIfNewer() {
+    try {
+      const r = await pullSync();
+      if (!r) return;
+      if (r.premium) setPremium(true);
+      if (r.data && r.updatedAt > (await lastSyncAt())) {
+        await applyRemote(r.data);
+        await markSynced(r.updatedAt);
+      }
+    } catch (e) {
+      if (e instanceof SessionRevoked) onRevoked();
+    }
+  }
+
+  // push local changes (debounced) while logged in
+  useEffect(() => {
+    if (!accountEmail || !ready || onboarding || applying.current) return;
+    const timer = setTimeout(() => {
+      pushSync({ tasks, categories, done, lang }).catch((e) => {
+        if (e instanceof SessionRevoked) onRevoked();
+      });
+    }, 2500);
+    return () => clearTimeout(timer);
+  }, [tasks, categories, done, lang, accountEmail, ready, onboarding]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const onLoggedIn = async (email: string, isPremium: boolean) => {
+    setAccountEmail(email);
+    setAccountOpen(false);
+    if (isPremium) setPremium(true);
+    try {
+      const r = await pullSync();
+      if (r?.data && r.data.tasks?.length) {
+        // switching phones: the account's tasks win
+        await applyRemote(r.data);
+        await markSynced(r.updatedAt);
+        setOnboarding(null);
+      } else if (!onboarding) {
+        await pushSync({ tasks: latest.current.tasks, categories, done: latest.current.done, lang });
+      }
+    } catch (e) {
+      if (e instanceof SessionRevoked) onRevoked();
+    }
+  };
+
+  const accountScreen = (
+    <AccountScreen
+      visible={accountOpen}
+      email={accountEmail}
+      onClose={() => setAccountOpen(false)}
+      onLoggedIn={(r) => onLoggedIn(r.email, r.premium)}
+      onLogout={async () => {
+        await logout();
+        setAccountEmail(null);
+        setPremium(await loadPremium());
+        setAccountOpen(false);
+      }}
+    />
+  );
+
   /** Free users keep up to FREE_TASK_LIMIT tasks; returns false (and explains) when there is no room. */
   const ensureRoom = (adding = 1) => {
     if (roomFor(premium, tasks.length) >= adding) return true;
@@ -210,22 +312,26 @@ function Main() {
   if (onboarding) {
     const cats = categories.length ? categories : defaultCategories(lang);
     return (
-      <Onboarding
-        categories={cats}
-        askLanguage={onboarding.first}
-        onFinish={async (added, isPremium) => {
-          const prem = premium || isPremium;
-          setPremium(prem);
-          // first run: start from the base categories in the chosen language
-          const nextCats = onboarding.first ? defaultCategories(lang) : cats;
-          setCategories(nextCats);
-          await saveCategories(nextCats);
-          setOnboarding(null);
-          setTab('today');
-          setGranted(await setupNotifications(lang));
-          await persistTasks(onboarding.first ? added : [...tasks, ...added.slice(0, roomFor(prem, tasks.length))]);
-        }}
-      />
+      <>
+        <Onboarding
+          categories={cats}
+          askLanguage={onboarding.first}
+          onSignIn={onboarding.first ? () => setAccountOpen(true) : undefined}
+          onFinish={async (added, isPremium) => {
+            const prem = premium || isPremium;
+            setPremium(prem);
+            // first run: start from the base categories in the chosen language
+            const nextCats = onboarding.first ? defaultCategories(lang) : cats;
+            setCategories(nextCats);
+            await saveCategories(nextCats);
+            setOnboarding(null);
+            setTab('today');
+            setGranted(await setupNotifications(lang));
+            await persistTasks(onboarding.first ? added : [...tasks, ...added.slice(0, roomFor(prem, tasks.length))]);
+          }}
+        />
+        {accountScreen}
+      </>
     );
   }
 
@@ -288,12 +394,18 @@ function Main() {
         premium={premium}
         taskCount={tasks.length}
         onPremium={() => setPremium(true)}
+        accountEmail={accountEmail}
+        onAccount={() => {
+          setSettings(false);
+          setAccountOpen(true);
+        }}
         onClose={() => setSettings(false)}
         onRedoQuiz={() => {
           setSettings(false);
           setOnboarding({ first: false });
         }}
       />
+      {accountScreen}
       <AIPlanner
         visible={planner}
         categories={categories}

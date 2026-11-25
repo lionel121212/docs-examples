@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { ActivityIndicator, Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { redeem } from './account';
 import { checkPremium } from './analysis';
 import { LANGS, useI18n } from './i18n';
 import { FREE_TASK_LIMIT, savePremium } from './premium';
@@ -11,9 +12,11 @@ type Props = {
   onPremium: () => void;
   onClose: () => void;
   onRedoQuiz: () => void;
+  accountEmail: string | null;
+  onAccount: () => void;
 };
 
-export function Settings({ visible, premium, taskCount, onPremium, onClose, onRedoQuiz }: Props) {
+export function Settings({ visible, premium, taskCount, onPremium, onClose, onRedoQuiz, accountEmail, onAccount }: Props) {
   const { t, lang, setLang, dir } = useI18n();
   const [code, setCode] = useState('');
   const [busy, setBusy] = useState(false);
@@ -21,7 +24,8 @@ export function Settings({ visible, premium, taskCount, onPremium, onClose, onRe
   const unlock = async () => {
     setBusy(true);
     setBad(false);
-    const ok = await checkPremium(code.trim());
+    // logged in: the code upgrades the account (all devices); otherwise just this phone
+    const ok = accountEmail ? await redeem(code.trim()) : await checkPremium(code.trim());
     setBusy(false);
     if (!ok) return setBad(true);
     await savePremium(code.trim());
@@ -48,6 +52,16 @@ export function Settings({ visible, premium, taskCount, onPremium, onClose, onRe
             </>
           )}
         </View>
+        <Pressable style={s.row} onPress={onAccount}>
+          <Text style={s.flag}>👤</Text>
+          <View style={{ flex: 1 }}>
+            <Text style={s.name}>{t('account')}</Text>
+            <Text style={{ color: '#64748b', fontSize: 13 }}>
+              {accountEmail ? t('logged_in_as', { email: accountEmail }) : t('account_hint')}
+            </Text>
+          </View>
+        </Pressable>
+        <View style={{ height: 12 }} />
         <Text style={s.label}>{t('language')}</Text>
         {LANGS.map((l) => (
           <Pressable key={l.code} onPress={() => setLang(l.code)} style={[s.row, lang === l.code && s.rowOn]}>

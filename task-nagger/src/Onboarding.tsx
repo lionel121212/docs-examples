@@ -55,6 +55,7 @@ type Props = {
   categories: Category[];
   askLanguage: boolean;
   onFinish: (tasks: Task[], premium: boolean) => void;
+  onSignIn?: () => void;
 };
 
 const INDIGO = '#4f46e5';
@@ -201,7 +202,7 @@ function Analyzing({ onDone, run }: { onDone: (a: Analysis) => void; run: () => 
 
 /* ---------- main flow ---------- */
 
-export function Onboarding({ categories, askLanguage, onFinish }: Props) {
+export function Onboarding({ categories, askLanguage, onFinish, onSignIn }: Props) {
   const { t, lang, setLang, dir, rtl, days } = useI18n();
   const insets = useSafeAreaInsets();
   const order: Step[] = [
@@ -558,6 +559,11 @@ export function Onboarding({ categories, askLanguage, onFinish }: Props) {
         )}
       </Animated.View>
 
+      {(step === 'welcome' || step === 'lang') && onSignIn && (
+        <Pressable onPress={onSignIn} style={s.signIn}>
+          <Text style={s.signInTxt}>{t('have_account')}</Text>
+        </Pressable>
+      )}
       {step !== 'analyzing' && step !== 'results' && (
         <Pressable style={[s.cta, !canNext && { opacity: 0.4 }]} disabled={!canNext} onPress={next}>
           <Text style={s.ctaTxt}>
@@ -848,6 +854,8 @@ const s = StyleSheet.create({
   codeBtn: { backgroundColor: '#facc15', borderRadius: 12, paddingHorizontal: 16, justifyContent: 'center' },
   codeBtnTxt: { color: '#1e1b4b', fontWeight: '900' },
   codeErr: { color: '#fca5a5', marginTop: 6 },
+  signIn: { paddingVertical: 12, alignItems: 'center' },
+  signInTxt: { color: '#c7d2fe', fontSize: 15, fontWeight: '700', textDecorationLine: 'underline' },
   freeBtn: { paddingVertical: 16, alignItems: 'center', marginTop: 6 },
   freeTxt: { color: '#e0e7ff', fontSize: 16, fontWeight: '800', textDecorationLine: 'underline' },
   freeNote: { color: '#a5b4fc', fontSize: 12, textAlign: 'center' },

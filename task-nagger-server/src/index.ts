@@ -1,4 +1,5 @@
 import Anthropic from "@anthropic-ai/sdk";
+import { handleAuth, handleSync, redeemCode } from "./auth";
 import { Env, isAllowed } from "./entitlement";
 import { makeOnboarding, ProfileSchema } from "./onboard";
 import { makePlan, PlanError } from "./plan";
@@ -21,6 +22,9 @@ export default {
       return json(200, { premium: await isAllowed(req, env) });
     }
     if (req.method === "POST" && url.pathname === "/onboard") return onboard(req, env);
+    if (url.pathname.startsWith("/auth/")) return handleAuth(req, env, url.pathname);
+    if (url.pathname === "/sync") return handleSync(req, env);
+    if (req.method === "POST" && url.pathname === "/redeem") return redeemCode(req, env);
     if (req.method !== "POST" || url.pathname !== "/plan") return json(404, { error: "not_found" });
 
     if (!(await isAllowed(req, env))) return json(402, { error: "subscription_required" });

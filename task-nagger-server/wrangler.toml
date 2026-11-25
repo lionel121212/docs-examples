@@ -13,3 +13,13 @@ compatibility_flags = ["nodejs_compat"]
 # [[kv_namespaces]]
 # binding = "LIMITS"
 # id = "<id>"
+
+# Accounts + sync (D1). Create once:
+#   npx wrangler d1 create task-nagger
+#   npx wrangler d1 migrations apply task-nagger --remote
+# then paste the database_id below and uncomment.
+# [[d1_databases]]
+# binding = "DB"
+# database_name = "task-nagger"
+# database_id = "<id>"
+# migrations_dir = "migrations"

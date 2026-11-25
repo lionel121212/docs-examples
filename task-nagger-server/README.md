@@ -10,6 +10,14 @@
 - `POST /plan`: תכנון לפי תיאור חופשי. **פרימיום בלבד**.
 - `GET /me`: בודק אם למשתמש יש פרימיום (מנוי או קוד בודק).
 
+## חשבונות (מכשיר אחד בכל פעם)
+- `POST /auth/register`, `POST /auth/login`, `POST /auth/logout`, ובנוסף `GET/PUT /sync` לגיבוי הנתונים.
+- **סיסמאות:** נשמרות כגיבוב PBKDF2 עם salt. הטוקן נשמר רק כגיבוב SHA-256.
+- **מכשיר אחד:** התחברות ממכשיר שני מחזירה `409 other_device` עם שם המכשיר המחובר. רק התחברות חוזרת עם `force: true` **והסיסמה** מנתקת את המכשיר הקודם, וזה מקבל `401 session_revoked` בפנייה הבאה שלו.
+- **פרימיום:** קוד בודק שמוזן כשמחוברים (`POST /redeem`) הופך את כל החשבון לפרימיום, בכל מכשיר.
+- **הגנה:** עד 20 ניסיונות התחברות ביום לכל אימייל ו-60 לכל IP. עובד רק עם ה-KV.
+- **עוד לא קיים:** איפוס סיסמה במייל.
+
 ## מי יכול להשתמש
 - **מנויים:** נבדקים מול RevenueCat (`REVENUECAT_SECRET`). מפעילים כשהאפליקציה בחנויות ויש בה מנוי.
 - **בודקים:** קוד מתוך `ACCESS_CODES`. כך אפשר לנסות את התכנון כבר עכשיו, בלי חנות.
@@ -25,7 +33,10 @@
    npx wrangler login
    npx wrangler secret put ANTHROPIC_API_KEY    # מדביקים את המפתח
    npx wrangler secret put ACCESS_CODES         # למשל: mycode123
-   npx wrangler kv namespace create LIMITS     # מומלץ: הגבלת שימוש בשאלון החינמי
+   npx wrangler kv namespace create LIMITS     # מומלץ: הגבלת שימוש והגנה על התחברות
+   npx wrangler d1 create task-nagger          # חשבונות וסנכרון
+   # מעתיקים את ה-database_id לקובץ wrangler.toml (החלק של d1_databases) ואז:
+   npx wrangler d1 migrations apply task-nagger --remote
    # מעתיקים את ה-id שמתקבל לקובץ wrangler.toml (החלק של kv_namespaces)
    npx wrangler deploy
    ```

@@ -1,3 +1,4 @@
+import { authenticate } from "./auth";
 /**
  * Who may use the AI planner.
  * - Subscribers: checked with RevenueCat (set REVENUECAT_SECRET once store billing is connected).
@@ -10,9 +11,15 @@ export type Env = {
   ACCESS_CODES?: string;
   /** optional KV namespace for rate limits on the free onboarding analysis */
   LIMITS?: KVNamespace;
+  /** optional D1 database for accounts + sync (see migrations/) */
+  DB?: D1Database;
 };
 
 export async function isAllowed(req: Request, env: Env): Promise<boolean> {
+  // logged-in account with Premium
+  const me = await authenticate(req, env);
+  if (me && me !== "revoked" && me.user.premium === 1) return true;
+
   const code = req.headers.get("x-access-code")?.trim();
   if (code && env.ACCESS_CODES) {
     const codes = env.ACCESS_CODES.split(",")
@@ -21,7 +28,7 @@ export async function isAllowed(req: Request, env: Env): Promise<boolean> {
     if (codes.includes(code)) return true;
   }
 
-  const userId = req.headers.get("x-app-user-id")?.trim();
+  const userId = me && me !== "revoked" ? me.user.id : req.headers.get("x-app-user-id")?.trim();
   if (!userId || !env.REVENUECAT_SECRET) return false;
   const res = await fetch(`https://api.revenuecat.com/v1/subscribers/${encodeURIComponent(userId)}`, {
     headers: { Authorization: `Bearer ${env.REVENUECAT_SECRET}` },

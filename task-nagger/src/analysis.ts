@@ -1,10 +1,10 @@
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import Constants from 'expo-constants';
 import { dateKey } from './dates';
 import { Lang, StrKey, translate } from './i18n';
+import { authHeaders } from './account';
+import { PLANNER_URL } from './server';
 import { Task } from './types';
 
-export const PLANNER_URL: string = ((Constants.expoConfig?.extra as any)?.plannerUrl ?? '').replace(/\/$/, '');
+export { PLANNER_URL };
 
 export type Life = 'school' | 'uni' | 'work' | 'army' | 'parent' | 'other';
 export type Struggle = 'procrast' | 'forget' | 'motivation' | 'time' | 'sleep' | 'phone' | 'focus';
@@ -103,18 +103,6 @@ export function localPlan(p: Profile, lang: Lang): PlannedTask[] {
   return out.sort((a, b) => a.time.localeCompare(b.time));
 }
 
-export async function getUserId(): Promise<string> {
-  try {
-    const existing = await AsyncStorage.getItem('userId');
-    if (existing) return existing;
-    const id = 'u_' + Date.now().toString(36) + Math.random().toString(36).slice(2, 10);
-    await AsyncStorage.setItem('userId', id);
-    return id;
-  } catch {
-    return 'anonymous';
-  }
-}
-
 /** AI analysis from the server; falls back to the local one on any problem. */
 export async function analyze(p: Profile, lang: Lang): Promise<Analysis> {
   const local = localAnalysis(p, lang);
@@ -123,7 +111,7 @@ export async function analyze(p: Profile, lang: Lang): Promise<Analysis> {
     const { nag: _nag, ...profile } = p;
     const res = await fetch(`${PLANNER_URL}/onboard`, {
       method: 'POST',
-      headers: { 'content-type': 'application/json', 'x-app-user-id': await getUserId() },
+      headers: { 'content-type': 'application/json', ...(await authHeaders()) },
       body: JSON.stringify({ profile, lang }),
     });
     if (!res.ok) return local;
@@ -140,7 +128,7 @@ export async function checkPremium(code: string): Promise<boolean> {
   if (!PLANNER_URL) return false;
   try {
     const res = await fetch(`${PLANNER_URL}/me`, {
-      headers: { 'x-app-user-id': await getUserId(), ...(code ? { 'x-access-code': code } : {}) },
+      headers: { ...(await authHeaders()), ...(code ? { 'x-access-code': code } : {}) },
     });
     return res.ok && ((await res.json()) as { premium: boolean }).premium === true;
   } catch {
