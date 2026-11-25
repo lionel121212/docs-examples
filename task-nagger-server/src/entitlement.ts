@@ -15,7 +15,9 @@ export type Env = {
 export async function isAllowed(req: Request, env: Env): Promise<boolean> {
   const code = req.headers.get("x-access-code")?.trim();
   if (code && env.ACCESS_CODES) {
-    const codes = env.ACCESS_CODES.split(",").map((c) => c.trim()).filter(Boolean);
+    const codes = env.ACCESS_CODES.split(",")
+      .map((c) => c.trim())
+      .filter(Boolean);
     if (codes.includes(code)) return true;
   }
 

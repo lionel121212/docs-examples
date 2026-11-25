@@ -24,6 +24,9 @@ export default {
     if (req.method !== "POST" || url.pathname !== "/plan") return json(404, { error: "not_found" });
 
     if (!(await isAllowed(req, env))) return json(402, { error: "subscription_required" });
+    // Premium has no task limit, but AI calls cost money: cap each user at 30 plans a day.
+    const planUser = req.headers.get("x-app-user-id") ?? req.headers.get("cf-connecting-ip") ?? "unknown";
+    if (!(await underLimit(env.LIMITS, `plan:${planUser}`, 30))) return json(429, { error: "daily_limit" });
 
     let body: { request?: unknown; today?: unknown };
     try {
@@ -38,7 +41,10 @@ export default {
 
     const client = new Anthropic({ apiKey: env.ANTHROPIC_API_KEY });
     try {
-      const lang = typeof (body as { lang?: unknown }).lang === "string" ? String((body as { lang: string }).lang).slice(0, 5) : undefined;
+      const lang =
+        typeof (body as { lang?: unknown }).lang === "string"
+          ? String((body as { lang: string }).lang).slice(0, 5)
+          : undefined;
       const plan = await makePlan(client, { request: text, today, lang });
       return json(200, plan);
     } catch (e) {

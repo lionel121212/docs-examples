@@ -82,7 +82,10 @@ export function sanitize(plan: Plan): Plan {
 }
 
 export class PlanError extends Error {
-  constructor(public status: number, public code: string) {
+  constructor(
+    public status: number,
+    public code: string,
+  ) {
     super(code);
   }
 }

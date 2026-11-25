@@ -2,7 +2,19 @@ import DateTimePicker from '@react-native-community/datetimepicker';
 import * as FileSystem from 'expo-file-system/legacy';
 import * as ImagePicker from 'expo-image-picker';
 import React, { useState } from 'react';
-import { Alert, KeyboardAvoidingView, Modal, Platform, Pressable, ScrollView, StyleSheet, Switch, Text, TextInput, View } from 'react-native';
+import {
+  Alert,
+  KeyboardAvoidingView,
+  Modal,
+  Platform,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Switch,
+  Text,
+  TextInput,
+  View,
+} from 'react-native';
 import { Illustration, ICON_KEYS, pickIcon } from './illustrations';
 import { TaskIcon } from './TaskIcon';
 import { useI18n } from './i18n';
@@ -18,12 +30,30 @@ type Props = {
   onClose: () => void;
 };
 
-function Stepper({ value, onChange, min, max, suffix }: { value: number; onChange: (n: number) => void; min: number; max: number; suffix: string }) {
+function Stepper({
+  value,
+  onChange,
+  min,
+  max,
+  suffix,
+}: {
+  value: number;
+  onChange: (n: number) => void;
+  min: number;
+  max: number;
+  suffix: string;
+}) {
   return (
     <View style={s.stepper}>
-      <Pressable style={s.stepBtn} onPress={() => onChange(Math.max(min, value - 1))}><Text style={s.stepTxt}>−</Text></Pressable>
-      <Text style={s.stepVal}>{value} {suffix}</Text>
-      <Pressable style={s.stepBtn} onPress={() => onChange(Math.min(max, value + 1))}><Text style={s.stepTxt}>+</Text></Pressable>
+      <Pressable style={s.stepBtn} onPress={() => onChange(Math.max(min, value - 1))}>
+        <Text style={s.stepTxt}>−</Text>
+      </Pressable>
+      <Text style={s.stepVal}>
+        {value} {suffix}
+      </Text>
+      <Pressable style={s.stepBtn} onPress={() => onChange(Math.min(max, value + 1))}>
+        <Text style={s.stepTxt}>+</Text>
+      </Pressable>
     </View>
   );
 }
@@ -85,7 +115,10 @@ function Form({ task, isNew, categories, onAddCategory, onSave, onDelete, onClos
   const autoKind = pickIcon(draft.title);
 
   return (
-    <KeyboardAvoidingView style={{ flex: 1, backgroundColor: '#fff', direction: dir }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+    <KeyboardAvoidingView
+      style={{ flex: 1, backgroundColor: '#fff', direction: dir }}
+      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+    >
       <ScrollView contentContainerStyle={s.form} keyboardShouldPersistTaps="handled">
         <View style={s.preview}>
           <TaskIcon task={draft} size={92} />
@@ -99,7 +132,11 @@ function Form({ task, isNew, categories, onAddCategory, onSave, onDelete, onClos
         <Text style={s.label}>{t('category')}</Text>
         <View style={s.wrap}>
           {categories.map((c) => (
-            <Pressable key={c.id} onPress={() => set({ categoryId: c.id })} style={[s.chip, { borderColor: c.color }, draft.categoryId === c.id && { backgroundColor: c.color }]}>
+            <Pressable
+              key={c.id}
+              onPress={() => set({ categoryId: c.id })}
+              style={[s.chip, { borderColor: c.color }, draft.categoryId === c.id && { backgroundColor: c.color }]}
+            >
               <Text style={[s.chipTxt, draft.categoryId === c.id && { color: '#fff' }]}>{c.name}</Text>
             </Pressable>
           ))}
@@ -108,25 +145,45 @@ function Form({ task, isNew, categories, onAddCategory, onSave, onDelete, onClos
               <Text style={s.chipTxt}>{t('new_category')}</Text>
             </Pressable>
           ) : (
-            <TextInput autoFocus style={[s.input, { minWidth: 150, paddingVertical: 6 }]} value={newCat} onChangeText={setNewCat} onSubmitEditing={addCategory} onBlur={addCategory} placeholder={t('category_ph')} returnKeyType="done" />
+            <TextInput
+              autoFocus
+              style={[s.input, { minWidth: 150, paddingVertical: 6 }]}
+              value={newCat}
+              onChangeText={setNewCat}
+              onSubmitEditing={addCategory}
+              onBlur={addCategory}
+              placeholder={t('category_ph')}
+              returnKeyType="done"
+            />
           )}
         </View>
 
         <Text style={s.label}>{t('color')}</Text>
         <View style={s.wrap}>
           {PALETTE.map((c) => (
-            <Pressable key={c} onPress={() => set({ color: c })} style={[s.swatch, { backgroundColor: c }, draft.color === c && s.swatchOn]} />
+            <Pressable
+              key={c}
+              onPress={() => set({ color: c })}
+              style={[s.swatch, { backgroundColor: c }, draft.color === c && s.swatchOn]}
+            />
           ))}
         </View>
 
         <Text style={s.label}>{t('illustration')}</Text>
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8, paddingVertical: 4 }}>
-          <Pressable onPress={() => set({ icon: 'auto', imageUri: undefined })} style={[s.iconBox, draft.icon === 'auto' && !draft.imageUri && { borderColor: draft.color, borderWidth: 2 }]}>
+          <Pressable
+            onPress={() => set({ icon: 'auto', imageUri: undefined })}
+            style={[s.iconBox, draft.icon === 'auto' && !draft.imageUri && { borderColor: draft.color, borderWidth: 2 }]}
+          >
             <Illustration kind={autoKind} color={draft.color} size={36} />
             <Text style={s.iconLbl}>{t('auto')}</Text>
           </Pressable>
           {ICON_KEYS.map((k) => (
-            <Pressable key={k} onPress={() => set({ icon: k, imageUri: undefined })} style={[s.iconBox, draft.icon === k && !draft.imageUri && { borderColor: draft.color, borderWidth: 2 }]}>
+            <Pressable
+              key={k}
+              onPress={() => set({ icon: k, imageUri: undefined })}
+              style={[s.iconBox, draft.icon === k && !draft.imageUri && { borderColor: draft.color, borderWidth: 2 }]}
+            >
               <Illustration kind={k} color={draft.color} size={36} />
             </Pressable>
           ))}
@@ -140,8 +197,18 @@ function Form({ task, isNew, categories, onAddCategory, onSave, onDelete, onClos
         <Text style={s.hint}>{t('exercises_hint')}</Text>
         {(draft.exercises ?? []).map((ex) => (
           <View key={ex.id} style={[s.row, { marginTop: 8 }]}>
-            <TextInput style={[s.input, { flex: 2, fontSize: 16, padding: 8 }]} value={ex.name} placeholder={t('exercise_ph')} onChangeText={(name) => setEx(ex.id, { name })} />
-            <TextInput style={[s.input, { flex: 2, fontSize: 16, padding: 8 }]} value={ex.detail} placeholder={t('amount_ph')} onChangeText={(detail) => setEx(ex.id, { detail })} />
+            <TextInput
+              style={[s.input, { flex: 2, fontSize: 16, padding: 8 }]}
+              value={ex.name}
+              placeholder={t('exercise_ph')}
+              onChangeText={(name) => setEx(ex.id, { name })}
+            />
+            <TextInput
+              style={[s.input, { flex: 2, fontSize: 16, padding: 8 }]}
+              value={ex.detail}
+              placeholder={t('amount_ph')}
+              onChangeText={(detail) => setEx(ex.id, { detail })}
+            />
             <Pressable onPress={() => set({ exercises: (draft.exercises ?? []).filter((e) => e.id !== ex.id) })} style={{ padding: 6 }}>
               <Text style={{ fontSize: 20 }}>🗑️</Text>
             </Pressable>
@@ -165,7 +232,8 @@ function Form({ task, isNew, categories, onAddCategory, onSave, onDelete, onClos
             is24Hour
             onChange={(e, d) => {
               setShowPicker(Platform.OS === 'ios');
-              if (e.type === 'set' && d) set({ time: `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}` });
+              if (e.type === 'set' && d)
+                set({ time: `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}` });
             }}
           />
         )}
@@ -173,7 +241,11 @@ function Form({ task, isNew, categories, onAddCategory, onSave, onDelete, onClos
         <Text style={s.label}>{t('days')}</Text>
         <View style={s.days}>
           {ALL_DAYS.map((d) => (
-            <Pressable key={d} onPress={() => toggleDay(d)} style={[s.day, draft.days.includes(d) && { backgroundColor: draft.color, borderColor: draft.color }]}>
+            <Pressable
+              key={d}
+              onPress={() => toggleDay(d)}
+              style={[s.day, draft.days.includes(d) && { backgroundColor: draft.color, borderColor: draft.color }]}
+            >
               <Text style={[s.dayTxt, draft.days.includes(d) && { color: '#fff' }]}>{dayNames[d]}</Text>
             </Pressable>
           ))}
@@ -189,10 +261,16 @@ function Form({ task, isNew, categories, onAddCategory, onSave, onDelete, onClos
           <Switch value={draft.enabled} onValueChange={(enabled) => set({ enabled })} />
         </View>
 
-        <Pressable style={[s.save, { backgroundColor: draft.color }]} onPress={save}><Text style={s.saveTxt}>{t('save')}</Text></Pressable>
-        <Pressable style={s.cancel} onPress={onClose}><Text style={s.cancelTxt}>{t('cancel')}</Text></Pressable>
+        <Pressable style={[s.save, { backgroundColor: draft.color }]} onPress={save}>
+          <Text style={s.saveTxt}>{t('save')}</Text>
+        </Pressable>
+        <Pressable style={s.cancel} onPress={onClose}>
+          <Text style={s.cancelTxt}>{t('cancel')}</Text>
+        </Pressable>
         {!isNew && (
-          <Pressable style={s.cancel} onPress={confirmDelete}><Text style={[s.cancelTxt, { color: '#d00' }]}>{t('delete_task')}</Text></Pressable>
+          <Pressable style={s.cancel} onPress={confirmDelete}>
+            <Text style={[s.cancelTxt, { color: '#d00' }]}>{t('delete_task')}</Text>
+          </Pressable>
         )}
       </ScrollView>
     </KeyboardAvoidingView>
@@ -212,14 +290,29 @@ const s = StyleSheet.create({
   chipTxt: { fontWeight: '600', fontSize: 14 },
   swatch: { width: 38, height: 38, borderRadius: 19 },
   swatchOn: { borderWidth: 4, borderColor: '#0f172a33' },
-  iconBox: { width: 64, height: 64, borderRadius: 16, borderWidth: 1, borderColor: '#e2e8f0', alignItems: 'center', justifyContent: 'center' },
+  iconBox: {
+    width: 64,
+    height: 64,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   iconLbl: { fontSize: 10, color: '#64748b', marginTop: 1 },
   timeBtn: { borderWidth: 1, borderColor: '#ccc', borderRadius: 10, padding: 12, alignItems: 'center' },
   timeTxt: { fontSize: 32, fontWeight: '600', letterSpacing: 2 },
   days: { flexDirection: 'row', gap: 6, justifyContent: 'space-between' },
   day: { flex: 1, aspectRatio: 1, borderRadius: 100, borderWidth: 1, borderColor: '#bbb', alignItems: 'center', justifyContent: 'center' },
   dayTxt: { fontSize: 15, fontWeight: '600' },
-  stepper: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', borderWidth: 1, borderColor: '#ccc', borderRadius: 10 },
+  stepper: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    borderWidth: 1,
+    borderColor: '#ccc',
+    borderRadius: 10,
+  },
   stepBtn: { padding: 12, width: 60, alignItems: 'center' },
   stepTxt: { fontSize: 26 },
   stepVal: { fontSize: 18, fontWeight: '600' },

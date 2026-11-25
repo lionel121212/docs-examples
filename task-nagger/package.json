@@ -26,7 +26,11 @@
     "start": "expo start",
     "android": "expo start --android",
     "ios": "expo start --ios",
-    "web": "expo start --web"
+    "web": "expo start --web",
+    "format": "npx --yes prettier@3.10.1 --write .",
+    "format:check": "npx --yes prettier@3.10.1 --check .",
+    "lint": "echo 'Type checking runs with dependencies installed: see build-task-nagger-apk.yml / npm run typecheck'",
+    "typecheck": "tsc --noEmit"
   },
   "private": true
 }

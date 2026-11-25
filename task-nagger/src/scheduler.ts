@@ -73,11 +73,37 @@ export function planNotifications(tasks: Task[], done: DoneMap, lang: Lang, now:
   return planned.slice(0, MAX_SCHEDULED);
 }
 
-/** Cancels everything and re-schedules from scratch based on current tasks + what's done. */
-export async function rescheduleAll(tasks: Task[], done: DoneMap, lang: Lang): Promise<number> {
-  await Notifications.cancelAllScheduledNotificationsAsync();
-  const planned = planNotifications(tasks, done, lang);
+/** Short stable hash, so a change in title/time/language produces a new notification id. */
+function hash(str: string): string {
+  let h = 5381;
+  for (let i = 0; i < str.length; i++) h = ((h << 5) + h + str.charCodeAt(i)) | 0;
+  return (h >>> 0).toString(36);
+}
+
+const OUR_ID = /^[^|]+\|\d{4}-\d{2}-\d{2}\|\d+\|/;
+let queue: Promise<unknown> = Promise.resolve();
+
+/**
+ * Brings the scheduled notifications in line with the plan: cancels what is no longer wanted
+ * and schedules only what is missing. Calls are serialized so overlapping syncs can't duplicate.
+ */
+export function rescheduleAll(tasks: Task[], done: DoneMap, lang: Lang): Promise<number> {
+  const run = queue.then(() => syncNow(tasks, done, lang));
+  queue = run.catch(() => {});
+  return run;
+}
+
+async function syncNow(tasks: Task[], done: DoneMap, lang: Lang): Promise<number> {
+  const planned = planNotifications(tasks, done, lang).map((p) => ({ ...p, id: `${p.id}|${hash(p.title + p.body + p.at.getTime())}` }));
+  const wanted = new Set(planned.map((p) => p.id));
+  const existing = await Notifications.getAllScheduledNotificationsAsync();
+  const have = new Set<string>();
+  for (const n of existing) {
+    if (wanted.has(n.identifier)) have.add(n.identifier);
+    else if (OUR_ID.test(n.identifier) || !n.identifier.includes('|')) await Notifications.cancelScheduledNotificationAsync(n.identifier);
+  }
   for (const p of planned) {
+    if (have.has(p.id)) continue;
     await Notifications.scheduleNotificationAsync({
       identifier: p.id,
       content: {
@@ -104,15 +130,11 @@ export async function cancelTodaysNags(taskId: string): Promise<void> {
   const prefix = `${taskId}|${dateKey(new Date())}|`;
   const all = await Notifications.getAllScheduledNotificationsAsync();
   await Promise.all(
-    all
-      .filter((n) => n.identifier.startsWith(prefix))
-      .map((n) => Notifications.cancelScheduledNotificationAsync(n.identifier)),
+    all.filter((n) => n.identifier.startsWith(prefix)).map((n) => Notifications.cancelScheduledNotificationAsync(n.identifier)),
   );
   // also clear any already-delivered notification still sitting in the tray
   const shown = await Notifications.getPresentedNotificationsAsync();
   await Promise.all(
-    shown
-      .filter((n) => n.request.content.data?.taskId === taskId)
-      .map((n) => Notifications.dismissNotificationAsync(n.request.identifier)),
+    shown.filter((n) => n.request.content.data?.taskId === taskId).map((n) => Notifications.dismissNotificationAsync(n.request.identifier)),
   );
 }

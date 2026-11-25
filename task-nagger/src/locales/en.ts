@@ -40,7 +40,7 @@ export const en = {
   no_permission: "⚠️ Notifications are off. Turn them on in your phone settings or reminders won't work.",
   now_label: '⏰ Now',
   next_label: '⏭️ Up next',
-  nag_hint: "🔔 Your phone will keep reminding you until you tick it",
+  nag_hint: '🔔 Your phone will keep reminding you until you tick it',
   done_btn: '✓ Done',
   later_today: 'Later today',
   free_day: 'No tasks today. Day off! 🏖️',
@@ -185,7 +185,7 @@ export const en = {
   prem_check: 'Unlock',
   prem_bad_code: "That code didn't work.",
   free_cta: 'Continue for free',
-  free_note: 'Free: a basic starter plan you can edit',
+  free_note: 'Free: up to {n} tasks you can edit',
   // local analysis (used when the AI server is unavailable)
   ins_life_school: 'As a student, your afternoon is your power time — that is where your plan lives.',
   ins_life_uni: 'University gives you freedom, which is exactly why a fixed routine will help you.',
@@ -216,6 +216,16 @@ export const en = {
   ex_situps: 'Sit-ups',
   ex_plank: 'Plank',
   ex_minute: '1 minute',
+  limit_title: 'Limit reached',
+  limit_body: 'Free includes up to {n} tasks. Premium has no limit.',
+  prem_b0: 'Tasks: no limit',
+  plan_premium: "⭐ You're Premium — no limit",
+  plan_free: 'Free · {used}/{n} tasks',
+  have_code: 'Have a Premium code?',
+  ok: 'OK',
+  go_premium: 'Go Premium',
+  a11y_add: 'Add task',
+  a11y_settings: 'Settings',
 };
 
 export type Strings = { [K in keyof typeof en]: string };

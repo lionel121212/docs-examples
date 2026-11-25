@@ -6,7 +6,10 @@
     "dev": "wrangler dev",
     "deploy": "wrangler deploy",
     "typecheck": "tsc --noEmit",
-    "test": "tsx test/plan.test.ts"
+    "test": "tsx test/plan.test.ts",
+    "format": "npx --yes prettier@3.10.1 --write .",
+    "format:check": "npx --yes prettier@3.10.1 --check .",
+    "lint": "echo 'Type checking runs with dependencies installed: see build-task-nagger-apk.yml / npm run typecheck'"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^1.14.0",

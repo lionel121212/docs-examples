@@ -3,9 +3,23 @@ import { DoneMap, Task } from './types';
 
 export type DayInfo = { date: Date; scheduled: Task[]; doneTasks: Task[] };
 
+/**
+ * Does this task count on this day?
+ * On the day a task was created it only counts if it was done, or if its time hasn't come yet,
+ * so a task added in the evening for 07:00 doesn't show up as "missed" on day one.
+ */
+export function isScheduled(t: Task, d: Date, done: DoneMap, now: Date = new Date()): boolean {
+  const key = dateKey(d);
+  if (!t.enabled || !t.days.includes(d.getDay()) || key < t.createdAt) return false;
+  if (key > t.createdAt) return true;
+  if (done[doneKey(t.id, d)]) return true;
+  if (key !== dateKey(now)) return false;
+  const [h, m] = t.time.split(':').map(Number);
+  return now.getHours() * 60 + now.getMinutes() < h * 60 + m;
+}
+
 export function dayInfo(date: Date, tasks: Task[], done: DoneMap): DayInfo {
-  const key = dateKey(date);
-  const scheduled = tasks.filter((t) => t.enabled && t.days.includes(date.getDay()) && t.createdAt <= key);
+  const scheduled = tasks.filter((t) => isScheduled(t, date, done));
   const doneTasks = scheduled.filter((t) => done[doneKey(t.id, date)]);
   return { date, scheduled, doneTasks };
 }

@@ -1,13 +1,53 @@
-import React from 'react';
-import { Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import React, { useState } from 'react';
+import { ActivityIndicator, Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { checkPremium } from './analysis';
 import { LANGS, useI18n } from './i18n';
+import { FREE_TASK_LIMIT, savePremium } from './premium';
 
-export function Settings({ visible, onClose, onRedoQuiz }: { visible: boolean; onClose: () => void; onRedoQuiz: () => void }) {
+type Props = {
+  visible: boolean;
+  premium: boolean;
+  taskCount: number;
+  onPremium: () => void;
+  onClose: () => void;
+  onRedoQuiz: () => void;
+};
+
+export function Settings({ visible, premium, taskCount, onPremium, onClose, onRedoQuiz }: Props) {
   const { t, lang, setLang, dir } = useI18n();
+  const [code, setCode] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [bad, setBad] = useState(false);
+  const unlock = async () => {
+    setBusy(true);
+    setBad(false);
+    const ok = await checkPremium(code.trim());
+    setBusy(false);
+    if (!ok) return setBad(true);
+    await savePremium(code.trim());
+    onPremium();
+  };
   return (
     <Modal visible={visible} animationType="slide" onRequestClose={onClose}>
       <ScrollView contentContainerStyle={[s.wrap, { direction: dir }]}>
         <Text style={s.h1}>⚙️ {t('settings')}</Text>
+        <View style={[s.plan, premium && s.planOn]}>
+          <Text style={[s.planTxt, premium && { color: '#1e1b4b' }]}>
+            {premium ? t('plan_premium') : t('plan_free', { used: Math.min(taskCount, FREE_TASK_LIMIT), n: FREE_TASK_LIMIT })}
+          </Text>
+          {!premium && (
+            <>
+              <Text style={s.planSub}>{t('have_code')}</Text>
+              <View style={s.codeRow}>
+                <TextInput style={s.codeInput} value={code} onChangeText={setCode} placeholder={t('code_ph')} autoCapitalize="none" />
+                <Pressable style={[s.codeBtn, (!code.trim() || busy) && { opacity: 0.5 }]} disabled={!code.trim() || busy} onPress={unlock}>
+                  {busy ? <ActivityIndicator color="#1e1b4b" /> : <Text style={s.codeBtnTxt}>{t('prem_check')}</Text>}
+                </Pressable>
+              </View>
+              {bad && <Text style={s.bad}>{t('prem_bad_code')}</Text>}
+            </>
+          )}
+        </View>
         <Text style={s.label}>{t('language')}</Text>
         {LANGS.map((l) => (
           <Pressable key={l.code} onPress={() => setLang(l.code)} style={[s.row, lang === l.code && s.rowOn]}>
@@ -32,8 +72,27 @@ export function Settings({ visible, onClose, onRedoQuiz }: { visible: boolean; o
 const s = StyleSheet.create({
   wrap: { padding: 20, paddingTop: 52, backgroundColor: '#f8fafc', flexGrow: 1 },
   h1: { fontSize: 28, fontWeight: '900', color: '#0f172a', marginBottom: 16 },
+  plan: { backgroundColor: '#1e1b4b', borderRadius: 18, padding: 16, marginBottom: 20 },
+  planOn: { backgroundColor: '#facc15' },
+  planTxt: { color: '#fff', fontSize: 17, fontWeight: '900' },
+  planSub: { color: '#c7d2fe', marginTop: 10 },
+  codeRow: { flexDirection: 'row', gap: 8, marginTop: 8 },
+  codeInput: { flex: 1, minWidth: 0, backgroundColor: '#fff', borderRadius: 12, paddingHorizontal: 12, paddingVertical: 10, fontSize: 16 },
+  codeBtn: { backgroundColor: '#facc15', borderRadius: 12, paddingHorizontal: 16, justifyContent: 'center' },
+  codeBtnTxt: { color: '#1e1b4b', fontWeight: '900' },
+  bad: { color: '#fca5a5', marginTop: 6 },
   label: { fontSize: 15, fontWeight: '800', color: '#64748b', marginBottom: 8 },
-  row: { flexDirection: 'row', alignItems: 'center', gap: 12, backgroundColor: '#fff', borderRadius: 16, padding: 16, marginBottom: 8, borderWidth: 2, borderColor: '#e2e8f0' },
+  row: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    backgroundColor: '#fff',
+    borderRadius: 16,
+    padding: 16,
+    marginBottom: 8,
+    borderWidth: 2,
+    borderColor: '#e2e8f0',
+  },
   rowOn: { borderColor: '#4f46e5', backgroundColor: '#eef2ff' },
   flag: { fontSize: 24 },
   name: { flex: 1, fontSize: 17, fontWeight: '700', color: '#0f172a' },

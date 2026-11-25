@@ -1,12 +1,14 @@
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Haptics from 'expo-haptics';
 import * as Notifications from 'expo-notifications';
 import { StatusBar } from 'expo-status-bar';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { AppState, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Alert, AppState, Pressable, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaProvider, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { dateKey, doneKey } from './src/dates';
 import { I18nProvider, LANGS, translate, useI18n } from './src/i18n';
 import { Onboarding } from './src/Onboarding';
+import { FREE_TASK_LIMIT, loadPremium, roomFor } from './src/premium';
 import { cancelTodaysNags, rescheduleAll, setupNotifications } from './src/scheduler';
 import { Settings } from './src/Settings';
 import { defaultCategories, loadCategories, loadDone, loadTasks, saveCategories, saveDone, saveTasks } from './src/storage';
@@ -17,7 +19,6 @@ import { WeekTable } from './src/WeekTable';
 import { Row, Status, TodayView } from './src/TodayView';
 import { summarize } from './src/stats';
 import { YearView } from './src/YearView';
-
 
 function statusFor(t: Task, done: DoneMap, now: Date): Status {
   if (!t.enabled || !t.days.includes(now.getDay())) return 'none';
@@ -31,8 +32,17 @@ function statusFor(t: Task, done: DoneMap, now: Date): Status {
 
 function newTask(categoryId: string): Task {
   return {
-    id: String(Date.now()), title: '', categoryId, color: PALETTE[5], icon: 'auto', time: '09:00',
-    days: [0, 1, 2, 3, 4, 5, 6], nagEveryMin: 5, nagCount: 6, enabled: true, createdAt: dateKey(new Date()),
+    id: String(Date.now()),
+    title: '',
+    categoryId,
+    color: PALETTE[5],
+    icon: 'auto',
+    time: '09:00',
+    days: [0, 1, 2, 3, 4, 5, 6],
+    nagEveryMin: 5,
+    nagCount: 6,
+    enabled: true,
+    createdAt: dateKey(new Date()),
   };
 }
 
@@ -43,6 +53,7 @@ function Main() {
   const { t, lang, dir } = useI18n();
   const [onboarding, setOnboarding] = useState<null | { first: boolean }>(null);
   const [settings, setSettings] = useState(false);
+  const [premium, setPremium] = useState(false);
   const [tab, setTab] = useState<'today' | 'table' | 'year'>('today');
   const [tasks, setTasks] = useState<Task[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
@@ -58,13 +69,19 @@ function Main() {
   const langRef = useRef(lang);
   langRef.current = lang;
   const resync = useCallback(async (list: Task[], d: DoneMap) => {
-    try { await rescheduleAll(list, d, langRef.current); } catch (e) { console.warn('schedule failed', e); }
+    try {
+      await rescheduleAll(list, d, langRef.current);
+    } catch (e) {
+      console.warn('schedule failed', e);
+    }
   }, []);
 
   useEffect(() => {
     (async () => {
-      const [stored, d, c] = await Promise.all([loadTasks(), loadDone(), loadCategories(langRef.current)]);
-      setDone(d); setCategories(c);
+      const [stored, d, c, prem] = await Promise.all([loadTasks(), loadDone(), loadCategories(langRef.current), loadPremium()]);
+      setDone(d);
+      setCategories(c);
+      setPremium(prem);
       if (stored === null) {
         setOnboarding({ first: true }); // first launch -> questionnaire
       } else {
@@ -96,13 +113,22 @@ function Main() {
   useEffect(() => {
     const tick = setInterval(() => setNow(new Date()), 30_000);
     const sub = AppState.addEventListener('change', (st) => {
-      if (st === 'active') { setNow(new Date()); resync(latest.current.tasks, latest.current.done); }
+      if (st === 'active') {
+        setNow(new Date());
+        resync(latest.current.tasks, latest.current.done);
+      }
     });
-    return () => { clearInterval(tick); sub.remove(); };
+    return () => {
+      clearInterval(tick);
+      sub.remove();
+    };
   }, [resync]);
 
   useEffect(() => {
-    const sub = Notifications.addNotificationResponseReceivedListener(() => { setNow(new Date()); setTab('today'); });
+    const sub = Notifications.addNotificationResponseReceivedListener(() => {
+      setNow(new Date());
+      setTab('today');
+    });
     return () => sub.remove();
   }, []);
 
@@ -145,12 +171,27 @@ function Main() {
     const next = { ...latest.current.done };
     const k = doneKey(`${t.id}#${exId}`, date);
     const wasOn = !!next[k];
-    if (wasOn) delete next[k]; else next[k] = true;
+    if (wasOn) delete next[k];
+    else next[k] = true;
     const all = (t.exercises ?? []).every((e) => next[doneKey(`${t.id}#${e.id}`, date)]);
-    if (all) next[doneKey(t.id, date)] = true; else delete next[doneKey(t.id, date)];
+    if (all) next[doneKey(t.id, date)] = true;
+    else delete next[doneKey(t.id, date)];
     if (all) Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
     else Haptics.selectionAsync().catch(() => {});
     await commitDone(next, t, date, all);
+  };
+
+  /** Free users keep up to FREE_TASK_LIMIT tasks; returns false (and explains) when there is no room. */
+  const ensureRoom = (adding = 1) => {
+    if (roomFor(premium, tasks.length) >= adding) return true;
+    Alert.alert(t('limit_title'), t('limit_body', { n: FREE_TASK_LIMIT }), [
+      { text: t('ok'), style: 'cancel' },
+      { text: t('go_premium'), onPress: () => setSettings(true) },
+    ]);
+    return false;
+  };
+  const openNewTask = () => {
+    if (ensureRoom()) setEditing({ task: newTask(categories[0]?.id ?? 'health'), isNew: true });
   };
 
   const rows: Row[] = useMemo(
@@ -159,7 +200,12 @@ function Main() {
   );
   const streak = useMemo(() => summarize(now.getFullYear(), tasks, done, now).streak, [tasks, done, now]);
 
-  if (!ready) return <View style={s.center}><Text>{t('loading')}</Text></View>;
+  if (!ready)
+    return (
+      <View style={s.center}>
+        <Text>{t('loading')}</Text>
+      </View>
+    );
 
   if (onboarding) {
     const cats = categories.length ? categories : defaultCategories(lang);
@@ -167,7 +213,9 @@ function Main() {
       <Onboarding
         categories={cats}
         askLanguage={onboarding.first}
-        onFinish={async (added, _premium) => {
+        onFinish={async (added, isPremium) => {
+          const prem = premium || isPremium;
+          setPremium(prem);
           // first run: start from the base categories in the chosen language
           const nextCats = onboarding.first ? defaultCategories(lang) : cats;
           setCategories(nextCats);
@@ -175,7 +223,7 @@ function Main() {
           setOnboarding(null);
           setTab('today');
           setGranted(await setupNotifications(lang));
-          await persistTasks(onboarding.first ? added : [...tasks, ...added]);
+          await persistTasks(onboarding.first ? added : [...tasks, ...added.slice(0, roomFor(prem, tasks.length))]);
         }}
       />
     );
@@ -196,7 +244,7 @@ function Main() {
           onDone={(t, v) => setTaskDone(t, now, v)}
           onToggleExercise={toggleExercise}
           onEdit={(t) => setEditing({ task: t, isNew: false })}
-          onAdd={() => setEditing({ task: newTask(categories[0]?.id ?? 'health'), isNew: true })}
+          onAdd={openNewTask}
           onAI={() => setPlanner(true)}
           onSettings={() => setSettings(true)}
         />
@@ -213,7 +261,12 @@ function Main() {
       )}
 
       {tab === 'table' && (
-        <Pressable style={[s.fab, { bottom: insets.bottom + 84 }]} onPress={() => setEditing({ task: newTask(categories[0]?.id ?? 'health'), isNew: true })}>
+        <Pressable
+          style={[s.fab, { bottom: insets.bottom + 84 }]}
+          onPress={openNewTask}
+          accessibilityRole="button"
+          accessibilityLabel={t('a11y_add')}
+        >
           <Text style={s.fabTxt}>{t('add_task')}</Text>
         </Pressable>
       )}
@@ -232,8 +285,14 @@ function Main() {
 
       <Settings
         visible={settings}
+        premium={premium}
+        taskCount={tasks.length}
+        onPremium={() => setPremium(true)}
         onClose={() => setSettings(false)}
-        onRedoQuiz={() => { setSettings(false); setOnboarding({ first: false }); }}
+        onRedoQuiz={() => {
+          setSettings(false);
+          setOnboarding({ first: false });
+        }}
       />
       <AIPlanner
         visible={planner}
@@ -241,6 +300,8 @@ function Main() {
         onClose={() => setPlanner(false)}
         onAdd={async (added, replace) => {
           setPlanner(false);
+          setPremium(true); // the planner only answers Premium users
+          AsyncStorage.setItem('premium', '1').catch(() => {});
           if (added.some((x) => x.categoryId === 'other') && !categories.some((c) => c.id === 'other')) {
             const next = [...categories, { id: 'other', name: t('cat_other'), color: '#64748b' }];
             setCategories(next);
@@ -259,7 +320,10 @@ function Main() {
           setEditing(null);
           await persistTasks(tasks.some((x) => x.id === t.id) ? tasks.map((x) => (x.id === t.id ? t : x)) : [...tasks, t]);
         }}
-        onDelete={async (id) => { setEditing(null); await persistTasks(tasks.filter((x) => x.id !== id)); }}
+        onDelete={async (id) => {
+          setEditing(null);
+          await persistTasks(tasks.filter((x) => x.id !== id));
+        }}
       />
     </View>
   );
@@ -278,9 +342,27 @@ export default function App() {
 const s = StyleSheet.create({
   root: { flex: 1, backgroundColor: '#f1f5f9', paddingHorizontal: 16 },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
-  fab: { position: 'absolute', alignSelf: 'center', backgroundColor: '#0f172a', paddingHorizontal: 26, paddingVertical: 14, borderRadius: 30, elevation: 6 },
+  fab: {
+    position: 'absolute',
+    alignSelf: 'center',
+    backgroundColor: '#0f172a',
+    paddingHorizontal: 26,
+    paddingVertical: 14,
+    borderRadius: 30,
+    elevation: 6,
+  },
   fabTxt: { color: '#fff', fontSize: 17, fontWeight: '700' },
-  tabs: { position: 'absolute', left: 0, right: 0, bottom: 0, flexDirection: 'row', backgroundColor: '#fff', paddingTop: 8, borderTopWidth: 1, borderTopColor: '#e2e8f0' },
+  tabs: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    bottom: 0,
+    flexDirection: 'row',
+    backgroundColor: '#fff',
+    paddingTop: 8,
+    borderTopWidth: 1,
+    borderTopColor: '#e2e8f0',
+  },
   tab: { flex: 1, alignItems: 'center', paddingVertical: 8 },
   tabTxt: { fontSize: 15, color: '#94a3b8', fontWeight: '700' },
   tabOn: { color: '#0f172a' },

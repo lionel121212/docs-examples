@@ -1,6 +1,5 @@
 export type IconKey =
-  | 'face' | 'tooth' | 'simulator' | 'bike' | 'dumbbell' | 'run' | 'moon' | 'sun'
-  | 'book' | 'drop' | 'pill' | 'laptop' | 'apple' | 'check';
+  'face' | 'tooth' | 'simulator' | 'bike' | 'dumbbell' | 'run' | 'moon' | 'sun' | 'book' | 'drop' | 'pill' | 'laptop' | 'apple' | 'check';
 
 export type Exercise = { id: string; name: string; detail: string };
 

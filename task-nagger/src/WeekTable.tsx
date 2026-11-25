@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { dateKey, doneKey } from './dates';
+import { isScheduled } from './stats';
 import { TaskIcon } from './TaskIcon';
 import { useI18n } from './i18n';
 import { Category, DoneMap, Task } from './types';
@@ -32,20 +33,23 @@ export function WeekTable({ tasks, done, categories, onToggle, onEdit }: Props) 
 
   // a day's column header shows how many of that day's tasks are done
   const dayStats = days.map((d) => {
-    const key = dateKey(d);
-    const sched = tasks.filter((t) => t.enabled && t.days.includes(d.getDay()) && t.createdAt <= key);
+    const sched = tasks.filter((t) => isScheduled(t, d, done));
     return { sched: sched.length, ok: sched.filter((t) => done[doneKey(t.id, d)]).length };
   });
 
   return (
     <ScrollView contentContainerStyle={{ paddingBottom: 110 }}>
       <View style={s.nav}>
-        <Pressable onPress={() => setOffset(offset - 1)} style={s.arrow}><Text style={s.arrowTxt}>{rtl ? '›' : '‹'}</Text></Pressable>
+        <Pressable onPress={() => setOffset(offset - 1)} style={s.arrow}>
+          <Text style={s.arrowTxt}>{rtl ? '›' : '‹'}</Text>
+        </Pressable>
         <Pressable onPress={() => setOffset(0)}>
           <Text style={s.title}>{offset === 0 ? t('this_week') : title}</Text>
           {offset !== 0 && <Text style={s.back}>{t('back_to_week')}</Text>}
         </Pressable>
-        <Pressable onPress={() => setOffset(offset + 1)} style={s.arrow}><Text style={s.arrowTxt}>{rtl ? '‹' : '›'}</Text></Pressable>
+        <Pressable onPress={() => setOffset(offset + 1)} style={s.arrow}>
+          <Text style={s.arrowTxt}>{rtl ? '‹' : '›'}</Text>
+        </Pressable>
       </View>
 
       <View style={[s.table, { direction: dir }]}>
@@ -57,7 +61,9 @@ export function WeekTable({ tasks, done, categories, onToggle, onEdit }: Props) 
               <View key={i} style={[s.headCell, isToday && s.headToday]}>
                 <Text style={[s.dayName, isToday && { color: '#fff' }]}>{dayNames[i]}</Text>
                 <Text style={[s.dayNum, isToday && { color: '#fff' }]}>{d.getDate()}</Text>
-                <Text style={[s.dayCount, isToday && { color: '#fff' }]}>{dayStats[i].sched ? `${dayStats[i].ok}/${dayStats[i].sched}` : ''}</Text>
+                <Text style={[s.dayCount, isToday && { color: '#fff' }]}>
+                  {dayStats[i].sched ? `${dayStats[i].ok}/${dayStats[i].sched}` : ''}
+                </Text>
               </View>
             );
           })}
@@ -77,14 +83,21 @@ export function WeekTable({ tasks, done, categories, onToggle, onEdit }: Props) 
                   <Pressable style={s.nameCol} onPress={() => onEdit(t)}>
                     <TaskIcon task={t} size={30} />
                     <View style={{ flex: 1 }}>
-                      <Text style={s.taskName} numberOfLines={2}>{t.title}</Text>
+                      <Text style={s.taskName} numberOfLines={2}>
+                        {t.title}
+                      </Text>
                       <Text style={s.taskTime}>{t.time}</Text>
                     </View>
                   </Pressable>
                   {days.map((d, i) => {
                     const key = dateKey(d);
-                    const scheduled = t.enabled && t.days.includes(d.getDay()) && t.createdAt <= key;
-                    if (!scheduled) return <View key={i} style={s.cell}><Text style={s.dash}>·</Text></View>;
+                    const scheduled = isScheduled(t, d, done);
+                    if (!scheduled)
+                      return (
+                        <View key={i} style={s.cell}>
+                          <Text style={s.dash}>·</Text>
+                        </View>
+                      );
                     const ok = !!done[doneKey(t.id, d)];
                     const future = key > todayKey;
                     const missed = !ok && key < todayKey;
@@ -94,13 +107,16 @@ export function WeekTable({ tasks, done, categories, onToggle, onEdit }: Props) 
                         disabled={future}
                         onPress={() => onToggle(t, d)}
                         style={[
-                          s.cell, s.cellOn,
+                          s.cell,
+                          s.cellOn,
                           ok && { backgroundColor: t.color },
                           missed && { backgroundColor: '#fee2e2' },
                           !ok && !missed && { borderColor: t.color, borderWidth: 2, opacity: future ? 0.35 : 1 },
                         ]}
                       >
-                        <Text style={[s.mark, ok && { color: '#fff' }, missed && { color: '#ef4444' }]}>{ok ? '✓' : missed ? '✕' : ''}</Text>
+                        <Text style={[s.mark, ok && { color: '#fff' }, missed && { color: '#ef4444' }]}>
+                          {ok ? '✓' : missed ? '✕' : ''}
+                        </Text>
                       </Pressable>
                     );
                   })}

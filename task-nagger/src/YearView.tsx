@@ -20,7 +20,10 @@ function colorFor(ratio: number | null, future: boolean): string {
 
 export function YearView({ tasks, done, categories }: { tasks: Task[]; done: DoneMap; categories: Category[] }) {
   const { t, locale, days, rtl } = useI18n();
-  const MONTHS = useMemo(() => Array.from({ length: 12 }, (_, m) => new Date(2026, m, 1).toLocaleDateString(locale, { month: 'short' })), [locale]);
+  const MONTHS = useMemo(
+    () => Array.from({ length: 12 }, (_, m) => new Date(2026, m, 1).toLocaleDateString(locale, { month: 'short' })),
+    [locale],
+  );
   const today = new Date();
   const [year, setYear] = useState(today.getFullYear());
   const [catFilter, setCatFilter] = useState<string | null>(null);
@@ -64,9 +67,13 @@ export function YearView({ tasks, done, categories }: { tasks: Task[]; done: Don
     <View style={{ flex: 1 }}>
       <ScrollView contentContainerStyle={{ paddingBottom: 40 }}>
         <View style={s.yearRow}>
-          <Pressable onPress={() => setYear(year - 1)} style={s.arrow}><Text style={s.arrowTxt}>{rtl ? '›' : '‹'}</Text></Pressable>
+          <Pressable onPress={() => setYear(year - 1)} style={s.arrow}>
+            <Text style={s.arrowTxt}>{rtl ? '›' : '‹'}</Text>
+          </Pressable>
           <Text style={s.year}>{year}</Text>
-          <Pressable onPress={() => setYear(year + 1)} style={s.arrow}><Text style={s.arrowTxt}>{rtl ? '‹' : '›'}</Text></Pressable>
+          <Pressable onPress={() => setYear(year + 1)} style={s.arrow}>
+            <Text style={s.arrowTxt}>{rtl ? '‹' : '›'}</Text>
+          </Pressable>
         </View>
 
         <View style={s.stats}>
@@ -77,15 +84,40 @@ export function YearView({ tasks, done, categories }: { tasks: Task[]; done: Don
         </View>
 
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={s.chips}>
-          <Chip label={t('all')} on={!catFilter && !taskFilter} onPress={() => { setCatFilter(null); setTaskFilter(null); }} color="#334155" />
+          <Chip
+            label={t('all')}
+            on={!catFilter && !taskFilter}
+            onPress={() => {
+              setCatFilter(null);
+              setTaskFilter(null);
+            }}
+            color="#334155"
+          />
           {categories.map((c) => (
-            <Chip key={c.id} label={c.name} color={c.color} on={catFilter === c.id} onPress={() => { setCatFilter(catFilter === c.id ? null : c.id); setTaskFilter(null); }} />
+            <Chip
+              key={c.id}
+              label={c.name}
+              color={c.color}
+              on={catFilter === c.id}
+              onPress={() => {
+                setCatFilter(catFilter === c.id ? null : c.id);
+                setTaskFilter(null);
+              }}
+            />
           ))}
         </ScrollView>
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={s.chips}>
-          {tasks.filter((t) => !catFilter || t.categoryId === catFilter).map((t) => (
-            <Chip key={t.id} label={t.title} color={t.color} on={taskFilter === t.id} onPress={() => setTaskFilter(taskFilter === t.id ? null : t.id)} />
-          ))}
+          {tasks
+            .filter((t) => !catFilter || t.categoryId === catFilter)
+            .map((t) => (
+              <Chip
+                key={t.id}
+                label={t.title}
+                color={t.color}
+                on={taskFilter === t.id}
+                onPress={() => setTaskFilter(taskFilter === t.id ? null : t.id)}
+              />
+            ))}
         </ScrollView>
 
         <View style={s.gridCard}>
@@ -93,14 +125,18 @@ export function YearView({ tasks, done, categories }: { tasks: Task[]; done: Don
           <View style={{ flexDirection: 'row', direction: 'ltr' }}>
             <View style={{ marginTop: 20 }}>
               {days.map((d, i) => (
-                <Text key={i} style={s.dow}>{i % 2 === 0 ? d : ''}</Text>
+                <Text key={i} style={s.dow}>
+                  {i % 2 === 0 ? d : ''}
+                </Text>
               ))}
             </View>
             <ScrollView ref={scroller} horizontal showsHorizontalScrollIndicator={false}>
               <View>
                 <View style={{ height: 20, flexDirection: 'row', direction: 'ltr' }}>
                   {monthStarts.map(({ col, m }) => (
-                    <Text key={m} style={[s.month, { left: col * (CELL + GAP) }]}>{MONTHS[m]}</Text>
+                    <Text key={m} style={[s.month, { left: col * (CELL + GAP) }]}>
+                      {MONTHS[m]}
+                    </Text>
                   ))}
                 </View>
                 <View style={{ flexDirection: 'row', direction: 'ltr', gap: GAP }}>
@@ -144,9 +180,7 @@ export function YearView({ tasks, done, categories }: { tasks: Task[]; done: Don
 
         {sel && selected && (
           <View style={s.detail}>
-            <Text style={s.detailTitle}>
-              {selected.toLocaleDateString(locale, { weekday: 'long', day: 'numeric', month: 'long' })}
-            </Text>
+            <Text style={s.detailTitle}>{selected.toLocaleDateString(locale, { weekday: 'long', day: 'numeric', month: 'long' })}</Text>
             {sel.scheduled.length === 0 && <Text style={s.none}>{t('no_tasks_day')}</Text>}
             {sel.scheduled.map((t) => {
               const ok = sel.doneTasks.includes(t);

@@ -1,7 +1,18 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import Constants from 'expo-constants';
 import React, { useEffect, useState } from 'react';
-import { ActivityIndicator, KeyboardAvoidingView, Modal, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import {
+  ActivityIndicator,
+  KeyboardAvoidingView,
+  Modal,
+  Platform,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  View,
+} from 'react-native';
 import { dateKey } from './dates';
 import { TaskIcon } from './TaskIcon';
 import { useI18n } from './i18n';
@@ -47,14 +58,23 @@ export function AIPlanner({ visible, categories, onClose, onAdd }: Props) {
   const [picked, setPicked] = useState<boolean[]>([]);
 
   useEffect(() => {
-    AsyncStorage.getItem('accessCode').then((c) => c && setCode(c)).catch(() => {});
+    AsyncStorage.getItem('accessCode')
+      .then((c) => c && setCode(c))
+      .catch(() => {});
   }, []);
 
-  const reset = () => { setPlan(null); setError(null); setPaywall(false); };
+  const reset = () => {
+    setPlan(null);
+    setError(null);
+    setPaywall(false);
+  };
 
   const ask = async () => {
     if (!text.trim()) return;
-    if (!PLANNER_URL) { setError(t('not_configured')); return; }
+    if (!PLANNER_URL) {
+      setError(t('not_configured'));
+      return;
+    }
     reset();
     setLoading(true);
     try {
@@ -68,9 +88,12 @@ export function AIPlanner({ visible, categories, onClose, onAdd }: Props) {
         },
         body: JSON.stringify({ request: text.trim(), today: new Date().toDateString(), lang }),
       });
-      if (res.status === 402) { setPaywall(true); return; }
+      if (res.status === 402) {
+        setPaywall(true);
+        return;
+      }
       if (!res.ok) {
-        setError(res.status === 503 ? t('server_busy') : t('went_wrong'));
+        setError(res.status === 503 || res.status === 429 ? t('server_busy') : t('went_wrong'));
         return;
       }
       const p = (await res.json()) as Plan;
@@ -110,23 +133,26 @@ export function AIPlanner({ visible, categories, onClose, onAdd }: Props) {
 
   return (
     <Modal visible={visible} animationType="slide" onRequestClose={onClose}>
-      <KeyboardAvoidingView style={{ flex: 1, backgroundColor: '#fff', direction: dir }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+      <KeyboardAvoidingView
+        style={{ flex: 1, backgroundColor: '#fff', direction: dir }}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      >
         <ScrollView contentContainerStyle={s.wrap} keyboardShouldPersistTaps="handled">
           <Text style={s.h1}>{t('planner_title')}</Text>
           <Text style={s.sub}>{t('planner_sub')}</Text>
 
-          <TextInput
-            style={s.input}
-            multiline
-            value={text}
-            onChangeText={setText}
-            placeholder={t('planner_ph')}
-            textAlignVertical="top"
-          />
-          <ScrollView horizontal style={{ flexGrow: 0 }} showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8, paddingVertical: 8, alignItems: 'flex-start' }}>
+          <TextInput style={s.input} multiline value={text} onChangeText={setText} placeholder={t('planner_ph')} textAlignVertical="top" />
+          <ScrollView
+            horizontal
+            style={{ flexGrow: 0 }}
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={{ gap: 8, paddingVertical: 8, alignItems: 'flex-start' }}
+          >
             {EXAMPLES.map((e) => (
               <Pressable key={e} style={s.example} onPress={() => setText(e)}>
-                <Text style={s.exampleTxt} numberOfLines={2}>{e}</Text>
+                <Text style={s.exampleTxt} numberOfLines={2}>
+                  {e}
+                </Text>
               </Pressable>
             ))}
           </ScrollView>
@@ -142,7 +168,13 @@ export function AIPlanner({ visible, categories, onClose, onAdd }: Props) {
             <View style={s.paywall}>
               <Text style={s.payTitle}>{t('premium_title')}</Text>
               <Text style={s.payTxt}>{t('premium_text')}</Text>
-              <TextInput style={[s.input, { minHeight: 0, marginTop: 8 }]} value={code} onChangeText={setCode} placeholder={t('code_ph')} autoCapitalize="none" />
+              <TextInput
+                style={[s.input, { minHeight: 0, marginTop: 8 }]}
+                value={code}
+                onChangeText={setCode}
+                placeholder={t('code_ph')}
+                autoCapitalize="none"
+              />
             </View>
           )}
 
@@ -153,22 +185,45 @@ export function AIPlanner({ visible, categories, onClose, onAdd }: Props) {
                 const cat = categories.find((c) => c.id === pt.category);
                 const color = cat?.color ?? PALETTE[i % PALETTE.length];
                 return (
-                  <Pressable key={i} style={[s.row, !picked[i] && { opacity: 0.4 }]} onPress={() => setPicked(picked.map((p, j) => (j === i ? !p : p)))}>
+                  <Pressable
+                    key={i}
+                    style={[s.row, !picked[i] && { opacity: 0.4 }]}
+                    onPress={() => setPicked(picked.map((p, j) => (j === i ? !p : p)))}
+                  >
                     <View style={[s.check, { borderColor: color }, picked[i] && { backgroundColor: color }]}>
                       {picked[i] && <Text style={s.tick}>✓</Text>}
                     </View>
                     <TaskIcon task={{ title: pt.title, icon: 'auto', color }} size={40} />
                     <View style={{ flex: 1 }}>
                       <Text style={s.title}>{pt.title}</Text>
-                      <Text style={s.meta}>{pt.time} · {daysLabel(pt.days, days, t('every_day'))}{pt.exercises.length ? ` · ${t('exercises_n', { n: pt.exercises.length })}` : ''}</Text>
+                      <Text style={s.meta}>
+                        {pt.time} · {daysLabel(pt.days, days, t('every_day'))}
+                        {pt.exercises.length ? ` · ${t('exercises_n', { n: pt.exercises.length })}` : ''}
+                      </Text>
                     </View>
                   </Pressable>
                 );
               })}
-              <Pressable style={[s.go, { marginTop: 12 }, !count && { opacity: 0.5 }]} disabled={!count} onPress={() => { onAdd(toTasks(), false); setPlan(null); setText(''); }}>
+              <Pressable
+                style={[s.go, { marginTop: 12 }, !count && { opacity: 0.5 }]}
+                disabled={!count}
+                onPress={() => {
+                  onAdd(toTasks(), false);
+                  setPlan(null);
+                  setText('');
+                }}
+              >
                 <Text style={s.goTxt}>{t('add_n', { n: count })}</Text>
               </Pressable>
-              <Pressable style={s.secondary} disabled={!count} onPress={() => { onAdd(toTasks(), true); setPlan(null); setText(''); }}>
+              <Pressable
+                style={s.secondary}
+                disabled={!count}
+                onPress={() => {
+                  onAdd(toTasks(), true);
+                  setPlan(null);
+                  setText('');
+                }}
+              >
                 <Text style={s.secondaryTxt}>{t('replace_all')}</Text>
               </Pressable>
             </View>

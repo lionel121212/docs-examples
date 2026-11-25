@@ -9,7 +9,19 @@ import Svg, { Defs, LinearGradient, RadialGradient, Rect, Stop } from 'react-nat
 
 /* ---------- aurora: big blurred orbs drifting around ---------- */
 
-function Orb({ color, size, from, to, duration }: { color: string; size: number; from: [number, number]; to: [number, number]; duration: number }) {
+function Orb({
+  color,
+  size,
+  from,
+  to,
+  duration,
+}: {
+  color: string;
+  size: number;
+  from: [number, number];
+  to: [number, number];
+  duration: number;
+}) {
   const a = useRef(new Animated.Value(0)).current;
   useEffect(() => {
     const loop = Animated.loop(
@@ -52,7 +64,13 @@ function Orb({ color, size, from, to, duration }: { color: string; size: number;
   );
 }
 
-export function Aurora({ colors = ['#7c3aed', '#2563eb', '#db2777', '#06b6d4'], intensity = 1 }: { colors?: string[]; intensity?: number }) {
+export function Aurora({
+  colors = ['#7c3aed', '#2563eb', '#db2777', '#06b6d4'],
+  intensity = 1,
+}: {
+  colors?: string[];
+  intensity?: number;
+}) {
   const base = 420 * intensity;
   return (
     <View pointerEvents="none" style={[StyleSheet.absoluteFill, { overflow: 'hidden' }]}>
@@ -131,7 +149,10 @@ export function GlowPulse({ color, radius = 22, style }: { color: string; radius
           borderWidth: 3,
           borderColor: color,
           opacity: a.interpolate({ inputRange: [0, 1], outputRange: [0.7, 0] }),
-          transform: [{ scaleX: a.interpolate({ inputRange: [0, 1], outputRange: [1, 1.06] }) }, { scaleY: a.interpolate({ inputRange: [0, 1], outputRange: [1, 1.18] }) }],
+          transform: [
+            { scaleX: a.interpolate({ inputRange: [0, 1], outputRange: [1, 1.06] }) },
+            { scaleY: a.interpolate({ inputRange: [0, 1], outputRange: [1, 1.18] }) },
+          ],
         },
         style,
       ]}
@@ -151,7 +172,12 @@ function Piece({ i, origin }: { i: number; origin: { x: number; y: number } }) {
   const dy = Math.sin(angle) * dist - 90;
   const spin = (Math.random() > 0.5 ? 1 : -1) * (360 + Math.random() * 540);
   useEffect(() => {
-    Animated.timing(a, { toValue: 1, duration: 1300 + Math.random() * 500, easing: Easing.out(Easing.cubic), useNativeDriver: true }).start();
+    Animated.timing(a, {
+      toValue: 1,
+      duration: 1300 + Math.random() * 500,
+      easing: Easing.out(Easing.cubic),
+      useNativeDriver: true,
+    }).start();
   }, [a]);
   const w = 6 + (i % 3) * 3;
   return (
@@ -204,7 +230,11 @@ export function Orbit({ size = 200, color = '#a5b4fc' }: { size?: number; color?
           key={i}
           style={[
             StyleSheet.absoluteFill,
-            { transform: [{ rotate: a.interpolate({ inputRange: [0, 1], outputRange: [`${i * 60}deg`, `${i * 60 + (i % 2 ? -360 : 360)}deg`] }) }] },
+            {
+              transform: [
+                { rotate: a.interpolate({ inputRange: [0, 1], outputRange: [`${i * 60}deg`, `${i * 60 + (i % 2 ? -360 : 360)}deg`] }) },
+              ],
+            },
           ]}
         >
           <View

@@ -37,7 +37,7 @@ const toMin = (hhmm: string) => {
   return h * 60 + m;
 };
 const toHHMM = (min: number) => {
-  const m = ((Math.round(min / 5) * 5) % 1440 + 1440) % 1440;
+  const m = (((Math.round(min / 5) * 5) % 1440) + 1440) % 1440;
   return `${String(Math.floor(m / 60)).padStart(2, '0')}:${String(m % 60).padStart(2, '0')}`;
 };
 
@@ -80,11 +80,17 @@ export function localPlan(p: Profile, lang: Lang): PlannedTask[] {
   for (const g of blocks) {
     if (g === 'study') add('tk_study', 'study', cursor, weekdays);
     if (g === 'fitness')
-      add('tk_fitness', 'sport', cursor, [0, 2, 4], [
-        { name: t('ex_pushups'), detail: '3×15' },
-        { name: t('ex_situps'), detail: '3×20' },
-        { name: t('ex_plank'), detail: t('ex_minute') },
-      ]);
+      add(
+        'tk_fitness',
+        'sport',
+        cursor,
+        [0, 2, 4],
+        [
+          { name: t('ex_pushups'), detail: '3×15' },
+          { name: t('ex_situps'), detail: '3×20' },
+          { name: t('ex_plank'), detail: t('ex_minute') },
+        ],
+      );
     if (g === 'projects') add('tk_projects', 'study', cursor, [0, 1, 3, 5]);
     if (g === 'hobby') add('tk_hobby', 'gaming', cursor, [1, 3, 5]);
     cursor += blockLen + 15;
