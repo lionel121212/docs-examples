@@ -1,0 +1,63 @@
+{
+  "expo": {
+    "name": "מציק משימות",
+    "slug": "task-nagger",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "automatic",
+    "ios": {
+      "supportsTablet": false
+    },
+    "android": {
+      "package": "com.tasknagger.app",
+      "adaptiveIcon": {
+        "backgroundColor": "#4f46e5",
+        "foregroundImage": "./assets/android-icon-foreground.png",
+        "backgroundImage": "./assets/android-icon-background.png",
+        "monochromeImage": "./assets/android-icon-monochrome.png"
+      },
+      "permissions": [
+        "android.permission.VIBRATE",
+        "android.permission.POST_NOTIFICATIONS",
+        "android.permission.SCHEDULE_EXACT_ALARM",
+        "android.permission.RECEIVE_BOOT_COMPLETED"
+      ],
+      "predictiveBackGestureEnabled": false,
+      "versionCode": 1
+    },
+    "plugins": [
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/notification-icon.png",
+          "color": "#4f46e5"
+        }
+      ],
+      [
+        "react-native-android-widget",
+        {
+          "widgets": [
+            {
+              "name": "NextTask",
+              "label": "מציק משימות",
+              "description": "המשימה הבאה עם כפתור בוצע",
+              "minWidth": "250dp",
+              "minHeight": "110dp",
+              "targetCellWidth": 3,
+              "targetCellHeight": 2,
+              "resizeMode": "horizontal|vertical",
+              "updatePeriodMillis": 1800000,
+              "widgetCategory": "home_screen"
+            }
+          ]
+        }
+      ]
+    ],
+    "extra": {
+      "plannerUrl": "",
+      "revenuecatAndroidKey": "",
+      "revenuecatIosKey": ""
+    }
+  }
+}

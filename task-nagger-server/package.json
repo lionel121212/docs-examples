@@ -1,0 +1,24 @@
+{
+  "name": "task-nagger-server",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy",
+    "typecheck": "tsc --noEmit",
+    "test": "tsx test/plan.test.ts && node --no-warnings --import tsx test/auth.test.ts && node --no-warnings --import tsx test/buddy.test.ts",
+    "format": "npx --yes prettier@3.10.1 --write .",
+    "format:check": "npx --yes prettier@3.10.1 --check .",
+    "lint": "echo 'Type checking runs with dependencies installed: see build-task-nagger-apk.yml / npm run typecheck'"
+  },
+  "dependencies": {
+    "zod": "^4.6.7"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^5.20261125.1",
+    "@types/node": "^22.20.6",
+    "tsx": "^4.23.15",
+    "typescript": "^7.0.2",
+    "wrangler": "^4.168.0"
+  }
+}

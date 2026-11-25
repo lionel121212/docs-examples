@@ -1,0 +1,33 @@
+name = "task-nagger-planner"
+main = "src/index.ts"
+compatibility_date = "2026-11-01"
+compatibility_flags = ["nodejs_compat"]
+
+# Free AI (Gemma 4 on Workers AI) - no API key needed
+[ai]
+binding = "AI"
+
+# Secrets (set with `npx wrangler secret put NAME`, never commit them):
+#   ACCESS_CODES        - optional, comma separated tester codes
+#   REVENUECAT_SECRET   - optional, enables paid subscribers
+
+# Optional: rate limits for the free onboarding analysis.
+# Create with `npx wrangler kv namespace create LIMITS` and paste the id here.
+# [[kv_namespaces]]
+# binding = "LIMITS"
+# id = "<id>"
+
+# Accounts + sync (D1). Create once:
+#   npx wrangler d1 create task-nagger
+#   npx wrangler d1 migrations apply task-nagger --remote
+# then paste the database_id below and uncomment.
+# [[d1_databases]]
+# binding = "DB"
+# database_name = "task-nagger"
+# database_id = "<id>"
+# migrations_dir = "migrations"
+
+# Password reset emails (Resend, free tier): `npx wrangler secret put RESEND_API_KEY`
+# and set the sender (a domain verified in Resend), e.g.:
+# [vars]
+# MAIL_FROM = "Task Nagger <no-reply@your-domain.com>"
