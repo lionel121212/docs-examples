@@ -113,3 +113,41 @@ const bad = await worker.fetch(
 );
 assert.equal(bad.status, 400);
 console.log("onboard + me: ok");
+
+// ---- /coach (premium only)
+const week = {
+  done: 9,
+  total: 14,
+  lastWeekRate: 50,
+  streak: 2,
+  tasks: [{ title: "ריצה", time: "06:00", done: 1, total: 4 }],
+};
+assert.equal(
+  (await worker.fetch(new Request("https://x/coach", { method: "POST", body: JSON.stringify({ week }) }), env)).status,
+  402,
+);
+globalThis.fetch = (async () =>
+  new Response(
+    JSON.stringify({
+      id: "m",
+      type: "message",
+      role: "assistant",
+      model: "claude-haiku-5-5",
+      content: [{ type: "text", text: JSON.stringify({ headline: "שבוע טוב", tips: ["א", "ב", "ג", "ד"] }) }],
+      stop_reason: "end_turn",
+      stop_sequence: null,
+      usage: { input_tokens: 1, output_tokens: 1 },
+    }),
+    { status: 200, headers: { "content-type": "application/json" } },
+  )) as typeof fetch;
+const co = await worker.fetch(
+  new Request("https://x/coach", {
+    method: "POST",
+    headers: { "x-access-code": "abc123" },
+    body: JSON.stringify({ week, lang: "he" }),
+  }),
+  env,
+);
+assert.equal(co.status, 200);
+assert.equal(((await co.json()) as any).tips.length, 3);
+console.log("coach: ok");

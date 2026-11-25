@@ -1,6 +1,7 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { handleAuth, handleSync, redeemCode } from "./auth";
 import { Env, isAllowed } from "./entitlement";
+import { makeCoach, WeekSchema } from "./coach";
 import { makeOnboarding, ProfileSchema } from "./onboard";
 import { makePlan, PlanError } from "./plan";
 import { underLimit } from "./ratelimit";
@@ -25,6 +26,7 @@ export default {
     if (url.pathname.startsWith("/auth/")) return handleAuth(req, env, url.pathname);
     if (url.pathname === "/sync") return handleSync(req, env);
     if (req.method === "POST" && url.pathname === "/redeem") return redeemCode(req, env);
+    if (req.method === "POST" && url.pathname === "/coach") return coach(req, env);
     if (req.method !== "POST" || url.pathname !== "/plan") return json(404, { error: "not_found" });
 
     if (!(await isAllowed(req, env))) return json(402, { error: "subscription_required" });
@@ -83,6 +85,31 @@ async function onboard(req: Request, env: Env): Promise<Response> {
   const client = new Anthropic({ apiKey: env.ANTHROPIC_API_KEY });
   try {
     return json(200, await makeOnboarding(client, parsed.data, lang));
+  } catch (e) {
+    if (e instanceof PlanError) return json(e.status, { error: e.code });
+    if (e instanceof Anthropic.RateLimitError) return json(503, { error: "busy" });
+    if (e instanceof Anthropic.APIError) return json(502, { error: "ai_unavailable" });
+    console.error(e);
+    return json(500, { error: "internal" });
+  }
+}
+
+/** Weekly AI coach (Premium). Shares the daily cap with /plan. */
+async function coach(req: Request, env: Env): Promise<Response> {
+  if (!(await isAllowed(req, env))) return json(402, { error: "subscription_required" });
+  const who = req.headers.get("x-app-user-id") ?? req.headers.get("cf-connecting-ip") ?? "unknown";
+  if (!(await underLimit(env.LIMITS, `plan:${who}`, 30))) return json(429, { error: "daily_limit" });
+  let body: { week?: unknown; lang?: unknown };
+  try {
+    body = await req.json();
+  } catch {
+    return json(400, { error: "bad_json" });
+  }
+  const week = WeekSchema.safeParse(body.week);
+  if (!week.success) return json(400, { error: "bad_week" });
+  const lang = typeof body.lang === "string" ? body.lang.slice(0, 5) : "en";
+  try {
+    return json(200, await makeCoach(new Anthropic({ apiKey: env.ANTHROPIC_API_KEY }), week.data, lang));
   } catch (e) {
     if (e instanceof PlanError) return json(e.status, { error: e.code });
     if (e instanceof Anthropic.RateLimitError) return json(503, { error: "busy" });

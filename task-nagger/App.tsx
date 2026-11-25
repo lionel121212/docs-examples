@@ -21,7 +21,10 @@ import {
 } from './src/account';
 import { AccountScreen } from './src/AccountScreen';
 import { identify, initBilling } from './src/billing';
+import { AchievementPopup } from './src/AchievementPopup';
+import { Achievement, achievements, loadEarned, saveEarned } from './src/achievements';
 import { Paywall } from './src/Paywall';
+import { WeeklySummary } from './src/WeeklySummary';
 import { getUserId } from './src/server';
 import { I18nProvider, Lang, LANGS, translate, useI18n } from './src/i18n';
 import { Onboarding } from './src/Onboarding';
@@ -104,6 +107,8 @@ function Main() {
   prefsRef.current = prefs;
   const snoozeRef = useRef<SnoozeMap>({});
   const [summaryOpen, setSummaryOpen] = useState(false);
+  const [newAch, setNewAch] = useState<Achievement | null>(null);
+  const earnedRef = useRef<string[] | null>(null);
   const langRef = useRef(lang);
   langRef.current = lang;
   const resync = useCallback(async (list: Task[], d: DoneMap) => {
@@ -206,6 +211,24 @@ function Main() {
     if (ready) handle(Notifications.getLastNotificationResponse());
     return () => sub.remove();
   }, [ready]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // detect newly earned achievements (the first run only records what is already earned)
+  useEffect(() => {
+    if (!ready || onboarding) return;
+    (async () => {
+      if (earnedRef.current === null)
+        earnedRef.current =
+          (await loadEarned()) ??
+          achievements(tasks, done)
+            .filter((a) => a.earned)
+            .map((a) => a.id);
+      const earned = achievements(tasks, done).filter((a) => a.earned);
+      const fresh = earned.find((a) => !earnedRef.current!.includes(a.id));
+      if (fresh) setNewAch(fresh);
+      earnedRef.current = earned.map((a) => a.id);
+      saveEarned(earnedRef.current);
+    })();
+  }, [done, tasks, ready, onboarding]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const updatePrefs = (p: Prefs) => {
     setPrefs(p);
@@ -440,7 +463,7 @@ function Main() {
           onEdit={(t) => setEditing({ task: t, isNew: false })}
         />
       ) : (
-        <YearView tasks={tasks} done={done} categories={categories} />
+        <YearView tasks={tasks} done={done} categories={categories} onSummary={() => setSummaryOpen(true)} />
       )}
 
       {tab === 'table' && (
@@ -490,6 +513,18 @@ function Main() {
       />
       {accountScreen}
       {paywallScreen}
+      <WeeklySummary
+        visible={summaryOpen}
+        tasks={tasks}
+        done={done}
+        premium={premium}
+        onClose={() => setSummaryOpen(false)}
+        onUpgrade={() => {
+          setSummaryOpen(false);
+          openPaywall();
+        }}
+      />
+      <AchievementPopup achievement={newAch} onClose={() => setNewAch(null)} />
       <AIPlanner
         onUpgrade={() => {
           setPlanner(false);

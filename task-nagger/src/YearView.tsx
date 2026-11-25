@@ -3,6 +3,8 @@ import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { dateKey } from './dates';
 import { dayInfo, summarize } from './stats';
 import { TaskIcon } from './TaskIcon';
+import { achievementName } from './AchievementPopup';
+import { achievements } from './achievements';
 import { useI18n } from './i18n';
 import { Category, DoneMap, Task } from './types';
 
@@ -18,7 +20,17 @@ function colorFor(ratio: number | null, future: boolean): string {
   return '#fca5a5';
 }
 
-export function YearView({ tasks, done, categories }: { tasks: Task[]; done: DoneMap; categories: Category[] }) {
+export function YearView({
+  tasks,
+  done,
+  categories,
+  onSummary,
+}: {
+  tasks: Task[];
+  done: DoneMap;
+  categories: Category[];
+  onSummary: () => void;
+}) {
   const { t, locale, days, rtl } = useI18n();
   const MONTHS = useMemo(
     () => Array.from({ length: 12 }, (_, m) => new Date(2026, m, 1).toLocaleDateString(locale, { month: 'short' })),
@@ -59,6 +71,7 @@ export function YearView({ tasks, done, categories }: { tasks: Task[]; done: Don
     setTimeout(() => scroller.current?.scrollTo({ x: Math.max(0, idx * (CELL + GAP) - 120), animated: false }), 50);
   }, [year]);
 
+  const achs = useMemo(() => achievements(tasks, done), [tasks, done]);
   const stats = useMemo(() => summarize(year, visible, done, today), [year, visible, done]);
   const sel = selected ? dayInfo(selected, visible, done) : null;
   const todayKey = dateKey(today);
@@ -76,6 +89,25 @@ export function YearView({ tasks, done, categories }: { tasks: Task[]; done: Don
           </Pressable>
         </View>
 
+        <Pressable style={s.summaryBtn} onPress={onSummary}>
+          <Text style={s.summaryTxt}>{t('ws_open')}</Text>
+        </Pressable>
+        <Text style={s.achTitle}>🏅 {t('achievements')}</Text>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8, paddingBottom: 12 }}>
+          {achs.map((a) => (
+            <View key={a.id} style={[s.ach, !a.earned && { opacity: 0.45 }]}>
+              <Text style={{ fontSize: 26 }}>{a.earned ? a.emoji : '🔒'}</Text>
+              <Text style={s.achName} numberOfLines={2}>
+                {achievementName(t, a)}
+              </Text>
+              {!a.earned && (
+                <Text style={s.achProg}>
+                  {a.progress}/{a.n}
+                </Text>
+              )}
+            </View>
+          ))}
+        </ScrollView>
         <View style={s.stats}>
           <Stat n={String(stats.streak)} label={t('st_streak')} />
           <Stat n={String(stats.perfect)} label={t('st_perfect')} />
@@ -218,6 +250,21 @@ function Chip({ label, color, on, onPress }: { label: string; color: string; on:
 }
 
 const s = StyleSheet.create({
+  summaryBtn: { backgroundColor: '#4f46e5', borderRadius: 14, paddingVertical: 12, alignItems: 'center', marginBottom: 12 },
+  summaryTxt: { color: '#fff', fontWeight: '900', fontSize: 15 },
+  achTitle: { fontSize: 15, fontWeight: '800', color: '#334155', marginBottom: 6 },
+  ach: {
+    width: 96,
+    backgroundColor: '#fff',
+    borderRadius: 16,
+    padding: 10,
+    alignItems: 'center',
+    gap: 4,
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+  },
+  achName: { fontSize: 11, fontWeight: '800', color: '#0f172a', textAlign: 'center' },
+  achProg: { fontSize: 10, color: '#94a3b8' },
   yearRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 24, marginBottom: 8 },
   year: { fontSize: 30, fontWeight: '800' },
   arrow: { padding: 10 },
