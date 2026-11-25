@@ -2,6 +2,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import React, { useEffect, useRef, useState } from 'react';
 import { Animated, Easing, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { Aurora, Orbit, Shimmer } from './fx';
 import { analyze, Analysis, checkPremium, Goal, Life, Nag, Profile, Struggle, toTasks } from './analysis';
 import { LANGS, StrKey, useI18n } from './i18n';
 import { TaskIcon } from './TaskIcon';
@@ -45,10 +46,10 @@ function Option({ emoji, label, desc, selected, onPress, delay }: { emoji: strin
       <Pressable onPress={press} style={[s.option, selected && s.optionOn]}>
         <Text style={s.optEmoji}>{emoji}</Text>
         <View style={{ flex: 1 }}>
-          <Text style={[s.optLabel, selected && { color: INDIGO }]}>{label}</Text>
+          <Text style={[s.optLabel, selected && { color: '#fff' }]}>{label}</Text>
           {desc ? <Text style={s.optDesc}>{desc}</Text> : null}
         </View>
-        <View style={[s.radio, selected && { backgroundColor: INDIGO, borderColor: INDIGO }]}>{selected && <Text style={s.radioTick}>✓</Text>}</View>
+        <View style={[s.radio, selected && { backgroundColor: '#818cf8', borderColor: '#c7d2fe' }]}>{selected && <Text style={s.radioTick}>✓</Text>}</View>
       </Pressable>
     </Animated.View>
   );
@@ -108,6 +109,7 @@ function Analyzing({ onDone, run }: { onDone: (a: Analysis) => void; run: () => 
   return (
     <View style={s.center}>
       <Animated.View style={[s.pulse, { opacity: pulse.interpolate({ inputRange: [0, 1], outputRange: [0.25, 0.6] }), transform: [{ scale: pulse.interpolate({ inputRange: [0, 1], outputRange: [0.9, 1.15] }) }] }]} />
+      <View style={s.orbitWrap}><Orbit size={190} /></View>
       <Animated.Text style={[s.sparkle, { transform: [{ rotate: spin.interpolate({ inputRange: [0, 1], outputRange: ['0deg', '360deg'] }) }] }]}>✨</Animated.Text>
       <Text style={s.anTitle}>{t('an_title')}</Text>
       <View style={{ marginTop: 22, gap: 12, alignSelf: 'stretch' }}>
@@ -187,6 +189,7 @@ export function Onboarding({ categories, askLanguage, onFinish }: Props) {
 
   return (
     <View style={[s.root, { direction: dir, paddingTop: insets.top + 8, paddingBottom: insets.bottom + 12 }]}>
+      <Aurora intensity={step === 'analyzing' ? 1.25 : 1} />
       {step !== 'lang' && step !== 'welcome' && step !== 'analyzing' && (
         <View style={s.topBar}>
           {step !== 'results' ? (
@@ -343,12 +346,13 @@ export function Onboarding({ categories, askLanguage, onFinish }: Props) {
                 {!showCode ? (
                   <Pressable style={s.premBtn} onPress={() => setShowCode(true)}>
                     <Text style={s.premBtnTxt}>{t('prem_cta')}</Text>
+                    <Shimmer delay={300} every={1800} />
                   </Pressable>
                 ) : (
                   <View style={{ marginTop: 12 }}>
                     <Text style={s.premSoon}>{t('prem_soon')}</Text>
                     <View style={s.codeRow}>
-                      <TextInput style={s.codeInput} value={code} onChangeText={setCode} placeholder={t('code_ph')} placeholderTextColor="#c7d2fe" autoCapitalize="none" />
+                      <TextInput style={s.codeInput} value={code} onChangeText={setCode} placeholder={t('code_ph')} placeholderTextColor="#818cf8" autoCapitalize="none" />
                       <Pressable style={[s.codeBtn, (!code.trim() || checking) && { opacity: 0.5 }]} disabled={!code.trim() || checking} onPress={tryPremium}>
                         <Text style={s.codeBtnTxt}>{t('prem_check')}</Text>
                       </Pressable>
@@ -369,6 +373,7 @@ export function Onboarding({ categories, askLanguage, onFinish }: Props) {
       {step !== 'analyzing' && step !== 'results' && (
         <Pressable style={[s.cta, !canNext && { opacity: 0.4 }]} disabled={!canNext} onPress={next}>
           <Text style={s.ctaTxt}>{step === 'welcome' ? t('ob_start') : t('ob_next')} {rtl ? '←' : '→'}</Text>
+          {canNext && <Shimmer />}
         </Pressable>
       )}
     </View>
@@ -424,64 +429,71 @@ function Welcome() {
   );
 }
 
+const GLASS = 'rgba(255,255,255,0.07)';
+const GLASS_BORDER = 'rgba(255,255,255,0.14)';
+const ON_BG = 'rgba(129,140,248,0.28)';
+const ON_BORDER = '#a5b4fc';
+const glow = (color: string) => ({ shadowColor: color, shadowOpacity: 0.9, shadowRadius: 16, shadowOffset: { width: 0, height: 0 }, elevation: 10 });
+
 const s = StyleSheet.create({
-  root: { flex: 1, backgroundColor: '#f8fafc', paddingHorizontal: 20 },
+  root: { flex: 1, backgroundColor: '#090d24', paddingHorizontal: 20 },
   topBar: { flexDirection: 'row', alignItems: 'center', gap: 14, marginBottom: 8, height: 32 },
-  backTxt: { color: '#64748b', fontSize: 15, fontWeight: '600' },
-  track: { flex: 1, height: 8, borderRadius: 4, backgroundColor: '#e2e8f0', overflow: 'hidden' },
-  trackFill: { height: 8, borderRadius: 4, backgroundColor: INDIGO },
+  backTxt: { color: '#a5b4fc', fontSize: 15, fontWeight: '600' },
+  track: { flex: 1, height: 8, borderRadius: 4, backgroundColor: 'rgba(255,255,255,0.12)', overflow: 'hidden' },
+  trackFill: { height: 8, borderRadius: 4, backgroundColor: '#a5b4fc' },
   body: { paddingTop: 12, paddingBottom: 20, gap: 10 },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 8 },
   bigEmoji: { fontSize: 48, textAlign: 'center', marginBottom: 4 },
-  q: { fontSize: 26, fontWeight: '900', color: '#0f172a', textAlign: 'center', marginBottom: 6 },
-  hint: { fontSize: 14, color: '#64748b', textAlign: 'center', marginTop: -4, marginBottom: 4 },
-  option: { flexDirection: 'row', alignItems: 'center', gap: 14, backgroundColor: '#fff', borderRadius: 18, padding: 16, borderWidth: 2, borderColor: '#e2e8f0' },
-  optionOn: { borderColor: INDIGO, backgroundColor: '#eef2ff' },
+  q: { fontSize: 27, fontWeight: '900', color: '#fff', textAlign: 'center', marginBottom: 6, textShadowColor: '#818cf8', textShadowRadius: 18 },
+  hint: { fontSize: 14, color: '#a5b4fc', textAlign: 'center', marginTop: -4, marginBottom: 4 },
+  option: { flexDirection: 'row', alignItems: 'center', gap: 14, backgroundColor: GLASS, borderRadius: 18, padding: 16, borderWidth: 1.5, borderColor: GLASS_BORDER },
+  optionOn: { borderColor: ON_BORDER, backgroundColor: ON_BG, ...glow('#818cf8') },
   optEmoji: { fontSize: 28 },
-  optLabel: { fontSize: 17, fontWeight: '700', color: '#0f172a' },
-  optDesc: { fontSize: 13, color: '#64748b', marginTop: 2 },
-  radio: { width: 26, height: 26, borderRadius: 13, borderWidth: 2, borderColor: '#cbd5e1', alignItems: 'center', justifyContent: 'center' },
+  optLabel: { fontSize: 17, fontWeight: '700', color: '#f1f5f9' },
+  optDesc: { fontSize: 13, color: '#a5b4fc', marginTop: 2 },
+  radio: { width: 26, height: 26, borderRadius: 13, borderWidth: 2, borderColor: 'rgba(255,255,255,0.3)', alignItems: 'center', justifyContent: 'center' },
   radioTick: { color: '#fff', fontWeight: '900', fontSize: 14 },
   grid: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', rowGap: 10 },
-  tile: { backgroundColor: '#fff', borderRadius: 18, borderWidth: 2, borderColor: '#e2e8f0', paddingVertical: 16, paddingHorizontal: 6, alignItems: 'center', gap: 6, minHeight: 104, justifyContent: 'center' },
-  tileOn: { backgroundColor: INDIGO, borderColor: INDIGO },
+  tile: { backgroundColor: GLASS, borderRadius: 18, borderWidth: 1.5, borderColor: GLASS_BORDER, paddingVertical: 16, paddingHorizontal: 6, alignItems: 'center', gap: 6, minHeight: 104, justifyContent: 'center' },
+  tileOn: { backgroundColor: 'rgba(99,102,241,0.55)', borderColor: ON_BORDER, ...glow('#818cf8') },
   tileEmoji: { fontSize: 30 },
-  tileLabel: { fontSize: 13, fontWeight: '700', color: '#0f172a', textAlign: 'center' },
-  timeRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', backgroundColor: '#fff', borderRadius: 18, padding: 12, borderWidth: 2, borderColor: '#e2e8f0', marginBottom: 10 },
-  timeLabel: { fontSize: 16, fontWeight: '700', color: '#0f172a', flex: 1 },
+  tileLabel: { fontSize: 13, fontWeight: '700', color: '#e0e7ff', textAlign: 'center' },
+  timeRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', backgroundColor: GLASS, borderRadius: 18, padding: 12, borderWidth: 1.5, borderColor: GLASS_BORDER, marginBottom: 10 },
+  timeLabel: { fontSize: 16, fontWeight: '700', color: '#f1f5f9', flex: 1 },
   stepper: { flexDirection: 'row', alignItems: 'center', gap: 4, direction: 'ltr' },
-  stepBtn: { width: 40, height: 40, borderRadius: 20, backgroundColor: '#eef2ff', alignItems: 'center', justifyContent: 'center' },
-  stepTxt: { fontSize: 22, color: INDIGO, fontWeight: '800' },
-  timeVal: { fontSize: 22, fontWeight: '900', width: 74, textAlign: 'center', color: '#0f172a' },
-  cta: { backgroundColor: INDIGO, borderRadius: 18, paddingVertical: 17, alignItems: 'center', marginTop: 8 },
+  stepBtn: { width: 40, height: 40, borderRadius: 20, backgroundColor: 'rgba(255,255,255,0.12)', alignItems: 'center', justifyContent: 'center' },
+  stepTxt: { fontSize: 22, color: '#fff', fontWeight: '800' },
+  timeVal: { fontSize: 22, fontWeight: '900', width: 74, textAlign: 'center', color: '#fff' },
+  cta: { backgroundColor: INDIGO, borderRadius: 18, paddingVertical: 17, alignItems: 'center', marginTop: 8, overflow: 'hidden', ...glow('#6366f1') },
   ctaTxt: { color: '#fff', fontSize: 18, fontWeight: '900' },
-  logo: { width: 128, height: 128, borderRadius: 40, backgroundColor: '#eef2ff', alignItems: 'center', justifyContent: 'center', marginBottom: 28 },
-  welcomeT: { fontSize: 28, fontWeight: '900', textAlign: 'center', color: '#0f172a' },
-  welcomeS: { fontSize: 16, color: '#475569', textAlign: 'center', marginTop: 12, lineHeight: 23 },
-  pulse: { position: 'absolute', width: 180, height: 180, borderRadius: 90, backgroundColor: '#c7d2fe', top: '28%' },
+  logo: { width: 132, height: 132, borderRadius: 42, backgroundColor: 'rgba(255,255,255,0.1)', borderWidth: 1.5, borderColor: 'rgba(255,255,255,0.25)', alignItems: 'center', justifyContent: 'center', marginBottom: 28, ...glow('#a78bfa') },
+  welcomeT: { fontSize: 30, fontWeight: '900', textAlign: 'center', color: '#fff', textShadowColor: '#a78bfa', textShadowRadius: 20 },
+  welcomeS: { fontSize: 16, color: '#c7d2fe', textAlign: 'center', marginTop: 12, lineHeight: 23 },
+  pulse: { position: 'absolute', width: 180, height: 180, borderRadius: 90, backgroundColor: '#6366f1', top: '28%' },
+  orbitWrap: { position: 'absolute', top: '28%', width: 190, height: 190, alignItems: 'center', justifyContent: 'center', marginTop: -5 },
   sparkle: { fontSize: 70, marginBottom: 24 },
-  anTitle: { fontSize: 22, fontWeight: '900', color: '#0f172a' },
-  anLine: { flexDirection: 'row', alignItems: 'center', gap: 12, backgroundColor: '#fff', borderRadius: 14, padding: 14 },
+  anTitle: { fontSize: 22, fontWeight: '900', color: '#fff', marginTop: 30 },
+  anLine: { flexDirection: 'row', alignItems: 'center', gap: 12, backgroundColor: GLASS, borderWidth: 1, borderColor: GLASS_BORDER, borderRadius: 14, padding: 14 },
   anIcon: { fontSize: 18 },
-  anTxt: { fontSize: 16, fontWeight: '600', color: '#334155' },
-  resTitle: { fontSize: 26, fontWeight: '900', color: '#0f172a', marginBottom: 10 },
-  insight: { backgroundColor: INDIGO, borderRadius: 20, padding: 18 },
+  anTxt: { fontSize: 16, fontWeight: '600', color: '#e0e7ff' },
+  resTitle: { fontSize: 27, fontWeight: '900', color: '#fff', marginBottom: 10, textShadowColor: '#818cf8', textShadowRadius: 18 },
+  insight: { backgroundColor: 'rgba(99,102,241,0.55)', borderWidth: 1, borderColor: '#a5b4fc', borderRadius: 20, padding: 18, ...glow('#6366f1') },
   insightTxt: { color: '#fff', fontSize: 16, lineHeight: 24, fontWeight: '600' },
-  section: { fontSize: 17, fontWeight: '900', color: '#0f172a', marginTop: 18, marginBottom: 8 },
-  rec: { flexDirection: 'row', gap: 12, alignItems: 'flex-start', backgroundColor: '#fff', borderRadius: 16, padding: 14, marginBottom: 8 },
-  recNum: { width: 26, height: 26, borderRadius: 13, backgroundColor: '#eef2ff', alignItems: 'center', justifyContent: 'center' },
-  recNumTxt: { color: INDIGO, fontWeight: '900' },
-  recTxt: { flex: 1, fontSize: 15, color: '#334155', lineHeight: 21 },
-  planCard: { backgroundColor: '#fff', borderRadius: 18, padding: 10 },
+  section: { fontSize: 17, fontWeight: '900', color: '#fff', marginTop: 18, marginBottom: 8 },
+  rec: { flexDirection: 'row', gap: 12, alignItems: 'flex-start', backgroundColor: GLASS, borderWidth: 1, borderColor: GLASS_BORDER, borderRadius: 16, padding: 14, marginBottom: 8 },
+  recNum: { width: 26, height: 26, borderRadius: 13, backgroundColor: 'rgba(165,180,252,0.25)', alignItems: 'center', justifyContent: 'center' },
+  recNumTxt: { color: '#e0e7ff', fontWeight: '900' },
+  recTxt: { flex: 1, fontSize: 15, color: '#e2e8f0', lineHeight: 21 },
+  planCard: { backgroundColor: 'rgba(255,255,255,0.94)', borderRadius: 18, padding: 10 },
   planRow: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 7 },
   planTime: { width: 46, fontWeight: '800', color: '#64748b', fontSize: 13, textAlign: 'center' },
   planTitle: { fontSize: 15, fontWeight: '700', color: '#0f172a' },
   planDays: { fontSize: 12, color: '#94a3b8' },
   lockedNote: { textAlign: 'center', color: INDIGO, fontWeight: '800', paddingTop: 8 },
-  premium: { backgroundColor: '#1e1b4b', borderRadius: 22, padding: 18, marginTop: 18 },
+  premium: { backgroundColor: 'rgba(30,27,75,0.92)', borderWidth: 1.5, borderColor: '#facc15', borderRadius: 22, padding: 18, marginTop: 18, ...glow('#facc15') },
   premTitle: { color: '#fff', fontSize: 22, fontWeight: '900', marginBottom: 8 },
   premB: { color: '#e0e7ff', fontSize: 15, marginVertical: 3, fontWeight: '600' },
-  premBtn: { backgroundColor: '#facc15', borderRadius: 16, paddingVertical: 15, alignItems: 'center', marginTop: 14 },
+  premBtn: { backgroundColor: '#facc15', borderRadius: 16, paddingVertical: 15, alignItems: 'center', marginTop: 14, overflow: 'hidden' },
   premBtnTxt: { color: '#1e1b4b', fontSize: 17, fontWeight: '900' },
   premSoon: { color: '#c7d2fe', fontSize: 14, lineHeight: 20 },
   codeRow: { flexDirection: 'row', gap: 8, marginTop: 10 },
@@ -490,6 +502,6 @@ const s = StyleSheet.create({
   codeBtnTxt: { color: '#1e1b4b', fontWeight: '900' },
   codeErr: { color: '#fca5a5', marginTop: 6 },
   freeBtn: { paddingVertical: 16, alignItems: 'center', marginTop: 6 },
-  freeTxt: { color: '#334155', fontSize: 16, fontWeight: '800', textDecorationLine: 'underline' },
-  freeNote: { color: '#94a3b8', fontSize: 12, textAlign: 'center' },
+  freeTxt: { color: '#e0e7ff', fontSize: 16, fontWeight: '800', textDecorationLine: 'underline' },
+  freeNote: { color: '#a5b4fc', fontSize: 12, textAlign: 'center' },
 });

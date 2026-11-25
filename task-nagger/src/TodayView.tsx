@@ -3,6 +3,7 @@ import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import Svg, { Circle } from 'react-native-svg';
 import { dateKey, doneKey } from './dates';
 import { TaskIcon } from './TaskIcon';
+import { Aurora, Confetti, GlowPulse, Shimmer } from './fx';
 import { useI18n } from './i18n';
 import { Category, DoneMap, Task } from './types';
 
@@ -121,6 +122,11 @@ function Exercises({ t, done, now, onToggle, light }: { t: Task; done: DoneMap; 
 export function TodayView({ rows, tasks, categories, done, now, streak, granted, onDone, onToggleExercise, onEdit, onAdd, onAI, onSettings }: Props) {
   const { t, locale, rtl } = useI18n();
   const [showDone, setShowDone] = useState(false);
+  const [burst, setBurst] = useState(0);
+  const celebrate = (task: Task) => {
+    setBurst(Date.now());
+    onDone(task, true);
+  };
   const today = rows.filter((r) => r.status !== 'none');
   const open = today.filter((r) => r.status !== 'done');
   const finished = today.filter((r) => r.status === 'done');
@@ -131,6 +137,7 @@ export function TodayView({ rows, tasks, categories, done, now, streak, granted,
   const cat = (id: string) => categories.find((c) => c.id === id);
 
   return (
+    <View style={{ flex: 1 }}>
     <ScrollView contentContainerStyle={{ paddingBottom: 110 }} showsVerticalScrollIndicator={false}>
       <Text style={s.hi}>{greeting(t, now)} 👋 · {now.toLocaleDateString(locale, { weekday: 'long' })}</Text>
       <View style={s.topRow}>
@@ -141,6 +148,7 @@ export function TodayView({ rows, tasks, categories, done, now, streak, granted,
       </View>
 
       <View style={s.heroCard}>
+        <Aurora colors={['#a78bfa', '#60a5fa', '#f472b6', '#22d3ee']} intensity={0.55} />
         <View style={s.hero}>
           <Ring pct={pct} />
           <View style={{ flex: 1 }}>
@@ -160,6 +168,8 @@ export function TodayView({ rows, tasks, categories, done, now, streak, granted,
       {focus && (
         <>
           <Text style={s.section}>{focus.status === 'late' ? t('now_label') : t('next_label')}</Text>
+          <View>
+          {focus.status === 'late' && <GlowPulse color="#ef4444" radius={22} />}
           <Pressable onPress={() => onEdit(focus)} style={[s.focus, { backgroundColor: focus.status === 'late' ? '#dc2626' : focus.color }]}>
             <View style={s.row}>
               <View style={s.focusIcon}><TaskIcon task={{ ...focus, color: '#ffffff' }} size={58} /></View>
@@ -170,10 +180,12 @@ export function TodayView({ rows, tasks, categories, done, now, streak, granted,
             </View>
             <Exercises t={focus} done={done} now={now} onToggle={(id) => onToggleExercise(focus, id)} light />
             {focus.status === 'late' && <Text style={s.nag}>{t('nag_hint')}</Text>}
-            <Pressable style={s.focusBtn} onPress={() => onDone(focus, true)}>
+            <Pressable style={s.focusBtn} onPress={() => celebrate(focus)}>
               <Text style={[s.focusBtnTxt, { color: focus.status === 'late' ? '#dc2626' : focus.color }]}>{t('done_btn')}</Text>
+              <Shimmer every={2200} />
             </Pressable>
           </Pressable>
+          </View>
         </>
       )}
 
@@ -190,7 +202,7 @@ export function TodayView({ rows, tasks, categories, done, now, streak, granted,
                 {cat(r.categoryId)?.name ?? ''} · {relTime(t, minutesUntil(r, now))}
               </Text>
             </View>
-            <Pressable onPress={() => onDone(r, true)} hitSlop={8} style={[s.circle, { borderColor: r.color }]} />
+            <Pressable onPress={() => celebrate(r)} hitSlop={8} style={[s.circle, { borderColor: r.color }]} />
           </View>
           <Exercises t={r} done={done} now={now} onToggle={(id) => onToggleExercise(r, id)} />
         </Pressable>
@@ -218,6 +230,8 @@ export function TodayView({ rows, tasks, categories, done, now, streak, granted,
         </View>
       ))}
     </ScrollView>
+    <Confetti burstKey={burst} origin={{ x: 190, y: 330 }} />
+    </View>
   );
 }
 
@@ -229,7 +243,7 @@ const s = StyleSheet.create({
   aiPill: { height: 40, borderRadius: 20, paddingHorizontal: 14, backgroundColor: '#4f46e5', alignItems: 'center', justifyContent: 'center' },
   aiPillTxt: { color: '#fff', fontWeight: '800', fontSize: 14 },
   iconBtnTxt: { fontSize: 20, color: '#4f46e5', fontWeight: '800' },
-  heroCard: { backgroundColor: '#4f46e5', borderRadius: 22, padding: 16, gap: 14 },
+  heroCard: { backgroundColor: '#4338ca', borderRadius: 22, padding: 16, gap: 14, overflow: 'hidden' },
   hero: { flexDirection: 'row', alignItems: 'center', gap: 14 },
   week: { flexDirection: 'row', justifyContent: 'space-between', borderTopWidth: 1, borderTopColor: '#ffffff26', paddingTop: 12 },
   weekDay: { alignItems: 'center', gap: 5, flex: 1 },
@@ -249,7 +263,7 @@ const s = StyleSheet.create({
   focusIcon: { backgroundColor: '#ffffff26', borderRadius: 20 },
   focusTitle: { color: '#fff', fontSize: 22, fontWeight: '900' },
   focusMeta: { color: '#ffffffd9', fontSize: 14, marginTop: 2, fontWeight: '600' },
-  focusBtn: { backgroundColor: '#fff', borderRadius: 14, paddingVertical: 13, alignItems: 'center', marginTop: 14 },
+  focusBtn: { backgroundColor: '#fff', borderRadius: 14, paddingVertical: 13, alignItems: 'center', marginTop: 14, overflow: 'hidden' },
   focusBtnTxt: { fontSize: 17, fontWeight: '900' },
   row: { flexDirection: 'row', alignItems: 'center', gap: 10 },
   card: { backgroundColor: '#fff', borderRadius: 16, padding: 12, marginBottom: 8 },
