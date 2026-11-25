@@ -27,6 +27,9 @@ import { AchievementPopup } from './src/AchievementPopup';
 import { Achievement, achievements, loadEarned, saveEarned } from './src/achievements';
 import { Paywall } from './src/Paywall';
 import { WeeklySummary } from './src/WeeklySummary';
+import { requestWidgetUpdate } from 'react-native-android-widget';
+import { renderNextTaskWidget, WIDGET_NAME } from './src/widget/handler';
+import { Platform } from 'react-native';
 import { getUserId } from './src/server';
 import { I18nProvider, Lang, LANGS, translate, useI18n } from './src/i18n';
 import { Onboarding } from './src/Onboarding';
@@ -237,6 +240,12 @@ function Main() {
       saveEarned(earnedRef.current);
     })();
   }, [done, tasks, ready, onboarding]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // keep the home-screen widget in step with the app
+  useEffect(() => {
+    if (!ready || Platform.OS !== 'android') return;
+    requestWidgetUpdate({ widgetName: WIDGET_NAME, renderWidget: renderNextTaskWidget }).catch(() => {});
+  }, [tasks, done, lang, ready]);
 
   const updatePrefs = (p: Prefs) => {
     setPrefs(p);

@@ -5,7 +5,7 @@
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
-    "userInterfaceStyle": "light",
+    "userInterfaceStyle": "automatic",
     "ios": {
       "supportsTablet": false
     },
@@ -32,6 +32,25 @@
         {
           "icon": "./assets/notification-icon.png",
           "color": "#4f46e5"
+        }
+      ],
+      [
+        "react-native-android-widget",
+        {
+          "widgets": [
+            {
+              "name": "NextTask",
+              "label": "מציק משימות",
+              "description": "המשימה הבאה עם כפתור בוצע",
+              "minWidth": "250dp",
+              "minHeight": "110dp",
+              "targetCellWidth": 3,
+              "targetCellHeight": 2,
+              "resizeMode": "horizontal|vertical",
+              "updatePeriodMillis": 1800000,
+              "widgetCategory": "home_screen"
+            }
+          ]
         }
       ]
     ],
