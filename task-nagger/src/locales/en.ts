@@ -252,6 +252,19 @@ export const en = {
   revoked_body: 'Your account was signed in on another device, so this one was signed out. Your tasks stay on this phone.',
   synced: '☁️ Synced',
   have_account: 'I already have an account — sign in',
+  pw_monthly: 'Monthly',
+  pw_yearly: 'Yearly',
+  pw_per_month: '{price} / month',
+  pw_per_year: '{price} / year',
+  pw_save: 'Save {n}%',
+  pw_buy: 'Continue',
+  pw_restore: 'Restore purchases',
+  pw_legal: 'The subscription renews automatically until you cancel. You can cancel any time in your store settings.',
+  pw_unavailable: 'Payment will open once the app is in the store.',
+  pw_success: 'Welcome to Premium! 🎉',
+  pw_failed: "The payment wasn't completed. You were not charged.",
+  pw_none: 'No previous purchases were found.',
+  pw_have_code: 'Tester code',
 };
 
 export type Strings = { [K in keyof typeof en]: string };

@@ -1,11 +1,11 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import React, { useEffect, useRef, useState } from 'react';
-import { Animated, Easing, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Animated, Easing, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Aurora, Orbit, Shimmer } from './fx';
-import { analyze, Analysis, checkPremium, Goal, Life, Nag, Profile, Struggle, toTasks } from './analysis';
+import { analyze, Analysis, Goal, Life, Nag, Profile, Struggle, toTasks } from './analysis';
 import { LANGS, StrKey, useI18n } from './i18n';
-import { FREE_TASK_LIMIT, savePremium } from './premium';
+import { FREE_TASK_LIMIT } from './premium';
 import { TaskIcon } from './TaskIcon';
 import { Category, PALETTE, Task } from './types';
 
@@ -56,6 +56,7 @@ type Props = {
   askLanguage: boolean;
   onFinish: (tasks: Task[], premium: boolean) => void;
   onSignIn?: () => void;
+  openPaywall: () => Promise<boolean>;
 };
 
 const INDIGO = '#4f46e5';
@@ -202,7 +203,7 @@ function Analyzing({ onDone, run }: { onDone: (a: Analysis) => void; run: () => 
 
 /* ---------- main flow ---------- */
 
-export function Onboarding({ categories, askLanguage, onFinish, onSignIn }: Props) {
+export function Onboarding({ categories, askLanguage, onFinish, onSignIn, openPaywall }: Props) {
   const { t, lang, setLang, dir, rtl, days } = useI18n();
   const insets = useSafeAreaInsets();
   const order: Step[] = [
@@ -231,10 +232,6 @@ export function Onboarding({ categories, askLanguage, onFinish, onSignIn }: Prop
   });
   const [lifeChosen, setLifeChosen] = useState(false);
   const [result, setResult] = useState<Analysis | null>(null);
-  const [showCode, setShowCode] = useState(false);
-  const [code, setCode] = useState('');
-  const [codeErr, setCodeErr] = useState(false);
-  const [checking, setChecking] = useState(false);
 
   const idx = order.indexOf(step);
   const questionSteps: Step[] = order.filter((x) => !['lang', 'welcome', 'analyzing', 'results'].includes(x));
@@ -267,15 +264,6 @@ export function Onboarding({ categories, askLanguage, onFinish, onSignIn }: Prop
     // free users keep only the starter part of an AI plan; Premium gets all of it
     const plan = premium ? result.plan : result.plan.slice(0, FREE_VISIBLE);
     onFinish(toTasks(plan, p.nag, colorFor), premium);
-  };
-  const tryPremium = async () => {
-    setChecking(true);
-    setCodeErr(false);
-    const ok = await checkPremium(code.trim());
-    setChecking(false);
-    if (!ok) return setCodeErr(true);
-    await savePremium(code.trim());
-    finish(true);
   };
 
   const canNext =
@@ -521,34 +509,15 @@ export function Onboarding({ categories, askLanguage, onFinish, onSignIn }: Prop
                     ✓ {t(k)}
                   </Text>
                 ))}
-                {!showCode ? (
-                  <Pressable style={s.premBtn} onPress={() => setShowCode(true)}>
-                    <Text style={s.premBtnTxt}>{t('prem_cta')}</Text>
-                    <Shimmer delay={300} every={1800} />
-                  </Pressable>
-                ) : (
-                  <View style={{ marginTop: 12 }}>
-                    <Text style={s.premSoon}>{t('prem_soon')}</Text>
-                    <View style={s.codeRow}>
-                      <TextInput
-                        style={s.codeInput}
-                        value={code}
-                        onChangeText={setCode}
-                        placeholder={t('code_ph')}
-                        placeholderTextColor="#818cf8"
-                        autoCapitalize="none"
-                      />
-                      <Pressable
-                        style={[s.codeBtn, (!code.trim() || checking) && { opacity: 0.5 }]}
-                        disabled={!code.trim() || checking}
-                        onPress={tryPremium}
-                      >
-                        <Text style={s.codeBtnTxt}>{t('prem_check')}</Text>
-                      </Pressable>
-                    </View>
-                    {codeErr && <Text style={s.codeErr}>{t('prem_bad_code')}</Text>}
-                  </View>
-                )}
+                <Pressable
+                  style={s.premBtn}
+                  onPress={async () => {
+                    if (await openPaywall()) finish(true);
+                  }}
+                >
+                  <Text style={s.premBtnTxt}>{t('prem_cta')}</Text>
+                  <Shimmer delay={300} every={1800} />
+                </Pressable>
               </View>
               <Pressable style={s.freeBtn} onPress={() => finish(false)}>
                 <Text style={s.freeTxt}>{t('free_cta')}</Text>

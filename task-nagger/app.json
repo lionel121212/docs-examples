@@ -37,7 +37,9 @@
       ]
     ],
     "extra": {
-      "plannerUrl": ""
+      "plannerUrl": "",
+      "revenuecatAndroidKey": "",
+      "revenuecatIosKey": ""
     }
   }
 }

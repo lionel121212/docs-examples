@@ -244,4 +244,18 @@ export const es: Strings = {
   revoked_body: 'Se inició sesión en tu cuenta desde otro dispositivo, así que esta se cerró. Tus tareas siguen en este teléfono.',
   synced: '☁️ Sincronizado',
   have_account: 'Ya tengo una cuenta — entrar',
+  pw_monthly: 'Mensual',
+  pw_yearly: 'Anual',
+  pw_per_month: '{price} / mes',
+  pw_per_year: '{price} / año',
+  pw_save: 'Ahorra {n}%',
+  pw_buy: 'Continuar',
+  pw_restore: 'Restaurar compras',
+  pw_legal:
+    'La suscripción se renueva automáticamente hasta que la canceles. Puedes cancelarla cuando quieras en los ajustes de la tienda.',
+  pw_unavailable: 'El pago se abrirá cuando la app esté en la tienda.',
+  pw_success: '¡Bienvenido a Premium! 🎉',
+  pw_failed: 'El pago no se completó. No se te cobró.',
+  pw_none: 'No se encontraron compras anteriores.',
+  pw_have_code: 'Código de prueba',
 };

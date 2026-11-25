@@ -33,9 +33,10 @@ type Props = {
   categories: Category[];
   onClose: () => void;
   onAdd: (tasks: Task[], replace: boolean) => void;
+  onUpgrade: () => void;
 };
 
-export function AIPlanner({ visible, categories, onClose, onAdd }: Props) {
+export function AIPlanner({ visible, categories, onClose, onAdd, onUpgrade }: Props) {
   const { t, lang, days, dir } = useI18n();
   const EXAMPLES = [t('planner_ex1'), t('planner_ex2')];
   const [text, setText] = useState('');
@@ -157,6 +158,9 @@ export function AIPlanner({ visible, categories, onClose, onAdd }: Props) {
             <View style={s.paywall}>
               <Text style={s.payTitle}>{t('premium_title')}</Text>
               <Text style={s.payTxt}>{t('premium_text')}</Text>
+              <Pressable style={[s.go, { backgroundColor: '#facc15' }]} onPress={onUpgrade}>
+                <Text style={[s.goTxt, { color: '#1e1b4b' }]}>{t('prem_cta')}</Text>
+              </Pressable>
               <TextInput
                 style={[s.input, { minHeight: 0, marginTop: 8 }]}
                 value={code}

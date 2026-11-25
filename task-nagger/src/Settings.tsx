@@ -14,9 +14,10 @@ type Props = {
   onRedoQuiz: () => void;
   accountEmail: string | null;
   onAccount: () => void;
+  onUpgrade: () => void;
 };
 
-export function Settings({ visible, premium, taskCount, onPremium, onClose, onRedoQuiz, accountEmail, onAccount }: Props) {
+export function Settings({ visible, premium, taskCount, onPremium, onClose, onRedoQuiz, accountEmail, onAccount, onUpgrade }: Props) {
   const { t, lang, setLang, dir } = useI18n();
   const [code, setCode] = useState('');
   const [busy, setBusy] = useState(false);
@@ -40,16 +41,9 @@ export function Settings({ visible, premium, taskCount, onPremium, onClose, onRe
             {premium ? t('plan_premium') : t('plan_free', { used: Math.min(taskCount, FREE_TASK_LIMIT), n: FREE_TASK_LIMIT })}
           </Text>
           {!premium && (
-            <>
-              <Text style={s.planSub}>{t('have_code')}</Text>
-              <View style={s.codeRow}>
-                <TextInput style={s.codeInput} value={code} onChangeText={setCode} placeholder={t('code_ph')} autoCapitalize="none" />
-                <Pressable style={[s.codeBtn, (!code.trim() || busy) && { opacity: 0.5 }]} disabled={!code.trim() || busy} onPress={unlock}>
-                  {busy ? <ActivityIndicator color="#1e1b4b" /> : <Text style={s.codeBtnTxt}>{t('prem_check')}</Text>}
-                </Pressable>
-              </View>
-              {bad && <Text style={s.bad}>{t('prem_bad_code')}</Text>}
-            </>
+            <Pressable style={s.upgrade} onPress={onUpgrade}>
+              <Text style={s.upgradeTxt}>{t('prem_cta')}</Text>
+            </Pressable>
           )}
         </View>
         <Pressable style={s.row} onPress={onAccount}>
@@ -87,6 +81,8 @@ const s = StyleSheet.create({
   wrap: { padding: 20, paddingTop: 52, backgroundColor: '#f8fafc', flexGrow: 1 },
   h1: { fontSize: 28, fontWeight: '900', color: '#0f172a', marginBottom: 16 },
   plan: { backgroundColor: '#1e1b4b', borderRadius: 18, padding: 16, marginBottom: 20 },
+  upgrade: { backgroundColor: '#facc15', borderRadius: 12, paddingVertical: 12, alignItems: 'center', marginTop: 12 },
+  upgradeTxt: { color: '#1e1b4b', fontWeight: '900', fontSize: 16 },
   planOn: { backgroundColor: '#facc15' },
   planTxt: { color: '#fff', fontSize: 17, fontWeight: '900' },
   planSub: { color: '#c7d2fe', marginTop: 10 },

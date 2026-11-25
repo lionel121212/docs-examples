@@ -7,11 +7,12 @@ import { Category, DoneMap, Task } from './types';
 
 const TOKEN_KEY = 'authToken';
 const EMAIL_KEY = 'accountEmail';
+const ID_KEY = 'accountId';
 
 export type SyncData = { tasks: Task[]; categories: Category[]; done: DoneMap; lang?: string };
 
 export type AuthResult =
-  | { ok: true; token: string; email: string; premium: boolean }
+  | { ok: true; token: string; email: string; id: string; premium: boolean }
   | { ok: false; error: 'other_device'; device: string }
   | {
       ok: false;
@@ -41,19 +42,30 @@ export async function getEmail(): Promise<string | null> {
   }
 }
 
-async function saveLogin(token: string, email: string) {
+async function saveLogin(token: string, email: string, id: string) {
   memToken = token;
   try {
     await SecureStore.setItemAsync(TOKEN_KEY, token);
-    await AsyncStorage.setItem(EMAIL_KEY, email);
+    await AsyncStorage.multiSet([
+      [EMAIL_KEY, email],
+      [ID_KEY, id],
+    ]);
   } catch {}
+}
+
+export async function getAccountId(): Promise<string | null> {
+  try {
+    return await AsyncStorage.getItem(ID_KEY);
+  } catch {
+    return null;
+  }
 }
 
 export async function clearLogin() {
   memToken = null;
   try {
     await SecureStore.deleteItemAsync(TOKEN_KEY);
-    await AsyncStorage.multiRemove([EMAIL_KEY, 'lastSyncAt']);
+    await AsyncStorage.multiRemove([EMAIL_KEY, ID_KEY, 'lastSyncAt']);
   } catch {}
 }
 
@@ -77,8 +89,8 @@ export async function authenticate(mode: 'login' | 'register', email: string, pa
     });
     const j = (await res.json().catch(() => ({}))) as any;
     if (res.ok && j.token) {
-      await saveLogin(j.token, j.user.email);
-      return { ok: true, token: j.token, email: j.user.email, premium: !!j.user.premium };
+      await saveLogin(j.token, j.user.email, j.user.id);
+      return { ok: true, token: j.token, email: j.user.email, id: j.user.id, premium: !!j.user.premium };
     }
     if (j.error === 'other_device') return { ok: false, error: 'other_device', device: j.device || '?' };
     if (res.status === 503 || res.status === 404) return { ok: false, error: 'unavailable' };

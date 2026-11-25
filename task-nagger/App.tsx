@@ -7,7 +7,10 @@ import { Alert, AppState, Pressable, StyleSheet, Text, View } from 'react-native
 import { SafeAreaProvider, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { dateKey, doneKey } from './src/dates';
 import {
+  SessionRevoked,
+  SyncData,
   clearLogin,
+  getAccountId,
   getEmail,
   getToken,
   lastSyncAt,
@@ -15,10 +18,11 @@ import {
   markSynced,
   pullSync,
   pushSync,
-  SessionRevoked,
-  SyncData,
 } from './src/account';
 import { AccountScreen } from './src/AccountScreen';
+import { identify, initBilling } from './src/billing';
+import { Paywall } from './src/Paywall';
+import { getUserId } from './src/server';
 import { I18nProvider, Lang, LANGS, translate, useI18n } from './src/i18n';
 import { Onboarding } from './src/Onboarding';
 import { FREE_TASK_LIMIT, loadPremium, roomFor } from './src/premium';
@@ -69,6 +73,19 @@ function Main() {
   const [onboarding, setOnboarding] = useState<null | { first: boolean }>(null);
   const [settings, setSettings] = useState(false);
   const [premium, setPremium] = useState(false);
+  const [paywall, setPaywall] = useState(false);
+  const paywallDone = useRef<((ok: boolean) => void) | null>(null);
+  /** Opens the paywall; resolves true when the user ends up Premium. */
+  const openPaywall = () =>
+    new Promise<boolean>((resolve) => {
+      paywallDone.current = resolve;
+      setPaywall(true);
+    });
+  const closePaywall = (ok: boolean) => {
+    setPaywall(false);
+    paywallDone.current?.(ok);
+    paywallDone.current = null;
+  };
   const [tab, setTab] = useState<'today' | 'table' | 'year'>('today');
   const [tasks, setTasks] = useState<Task[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
@@ -108,6 +125,9 @@ function Main() {
         setAccountEmail(await getEmail());
         pullIfNewer();
       }
+      // store subscriptions: identity = account id when logged in, else this device
+      const storeId = (await getAccountId()) ?? (await getUserId());
+      if (await initBilling(storeId, (p) => p && setPremium(true))) setPremium(true);
       setReady(true);
     })();
   }, [resync]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -249,10 +269,10 @@ function Main() {
     return () => clearTimeout(timer);
   }, [tasks, categories, done, lang, accountEmail, ready, onboarding]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const onLoggedIn = async (email: string, isPremium: boolean) => {
+  const onLoggedIn = async (email: string, accountId: string, isPremium: boolean) => {
     setAccountEmail(email);
     setAccountOpen(false);
-    if (isPremium) setPremium(true);
+    if (isPremium || (await identify(accountId))) setPremium(true);
     try {
       const r = await pullSync();
       if (r?.data && r.data.tasks?.length) {
@@ -268,16 +288,28 @@ function Main() {
     }
   };
 
+  const paywallScreen = (
+    <Paywall
+      visible={paywall}
+      accountEmail={accountEmail}
+      onClose={() => closePaywall(false)}
+      onPremium={() => {
+        setPremium(true);
+        closePaywall(true);
+      }}
+    />
+  );
+
   const accountScreen = (
     <AccountScreen
       visible={accountOpen}
       email={accountEmail}
       onClose={() => setAccountOpen(false)}
-      onLoggedIn={(r) => onLoggedIn(r.email, r.premium)}
+      onLoggedIn={(r) => onLoggedIn(r.email, r.id, r.premium)}
       onLogout={async () => {
         await logout();
         setAccountEmail(null);
-        setPremium(await loadPremium());
+        setPremium((await loadPremium()) || (await identify(await getUserId())));
         setAccountOpen(false);
       }}
     />
@@ -288,7 +320,7 @@ function Main() {
     if (roomFor(premium, tasks.length) >= adding) return true;
     Alert.alert(t('limit_title'), t('limit_body', { n: FREE_TASK_LIMIT }), [
       { text: t('ok'), style: 'cancel' },
-      { text: t('go_premium'), onPress: () => setSettings(true) },
+      { text: t('go_premium'), onPress: () => openPaywall() },
     ]);
     return false;
   };
@@ -317,6 +349,7 @@ function Main() {
           categories={cats}
           askLanguage={onboarding.first}
           onSignIn={onboarding.first ? () => setAccountOpen(true) : undefined}
+          openPaywall={openPaywall}
           onFinish={async (added, isPremium) => {
             const prem = premium || isPremium;
             setPremium(prem);
@@ -331,6 +364,7 @@ function Main() {
           }}
         />
         {accountScreen}
+        {paywallScreen}
       </>
     );
   }
@@ -390,6 +424,10 @@ function Main() {
       </View>
 
       <Settings
+        onUpgrade={() => {
+          setSettings(false);
+          openPaywall();
+        }}
         visible={settings}
         premium={premium}
         taskCount={tasks.length}
@@ -406,7 +444,12 @@ function Main() {
         }}
       />
       {accountScreen}
+      {paywallScreen}
       <AIPlanner
+        onUpgrade={() => {
+          setPlanner(false);
+          openPaywall();
+        }}
         visible={planner}
         categories={categories}
         onClose={() => setPlanner(false)}
