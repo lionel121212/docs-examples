@@ -11,6 +11,7 @@ import { TaskEditor } from './src/TaskEditor';
 import { TaskIcon } from './src/TaskIcon';
 import { Category, DoneMap, PALETTE, Task } from './src/types';
 import { dateKey } from './src/dates';
+import { AIPlanner } from './src/AIPlanner';
 import { WeekTable } from './src/WeekTable';
 import { YearView } from './src/YearView';
 
@@ -46,6 +47,7 @@ function Main() {
   const [granted, setGranted] = useState(true);
   const [editing, setEditing] = useState<{ task: Task; isNew: boolean } | null>(null);
   const [now, setNow] = useState(new Date());
+  const [planner, setPlanner] = useState(false);
   const latest = useRef({ tasks, done });
   latest.current = { tasks, done };
 
@@ -197,6 +199,9 @@ function Main() {
         <ScrollView contentContainerStyle={{ paddingBottom: 170 }} showsVerticalScrollIndicator={false}>
           <Text style={s.hi}>{greeting(now)} 👋</Text>
           <Text style={s.h1}>{now.toLocaleDateString('he-IL', { weekday: 'long', day: 'numeric', month: 'long' })}</Text>
+          <Pressable style={s.aiBtn} onPress={() => setPlanner(true)}>
+            <Text style={s.aiTxt}>✨ תכנן לי את השבוע עם AI</Text>
+          </Pressable>
           <View style={s.bar}><View style={[s.barFill, { width: `${pct * 100}%` }]} /></View>
           <Text style={s.progress}>{doneCount} מתוך {today.length} הושלמו{pct === 1 && today.length ? ' 🎉' : ''}</Text>
           {!granted && <Text style={s.warn}>⚠️ אין הרשאת התראות. הפעל אותה בהגדרות הטלפון, אחרת התזכורות לא יעבדו.</Text>}
@@ -238,6 +243,20 @@ function Main() {
         </Pressable>
       </View>
 
+      <AIPlanner
+        visible={planner}
+        categories={categories}
+        onClose={() => setPlanner(false)}
+        onAdd={async (added, replace) => {
+          setPlanner(false);
+          if (added.some((t) => t.categoryId === 'other') && !categories.some((c) => c.id === 'other')) {
+            const next = [...categories, { id: 'other', name: 'כללי', color: '#64748b' }];
+            setCategories(next);
+            await saveCategories(next);
+          }
+          await persistTasks(replace ? added : [...tasks, ...added]);
+        }}
+      />
       <TaskEditor
         task={editing?.task ?? null}
         isNew={editing?.isNew ?? false}
@@ -263,6 +282,8 @@ const s = StyleSheet.create({
   center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   hi: { fontSize: 16, color: '#64748b' },
   h1: { fontSize: 28, fontWeight: '800', color: '#0f172a', marginBottom: 12 },
+  aiBtn: { backgroundColor: '#4f46e5', borderRadius: 14, padding: 14, alignItems: 'center', marginBottom: 14 },
+  aiTxt: { color: '#fff', fontSize: 16, fontWeight: '800' },
   bar: { height: 10, backgroundColor: '#e2e8f0', borderRadius: 5, overflow: 'hidden' },
   barFill: { height: 10, backgroundColor: '#16a34a', borderRadius: 5 },
   progress: { fontSize: 14, color: '#475569', marginTop: 6, marginBottom: 14 },

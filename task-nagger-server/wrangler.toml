@@ -1,0 +1,9 @@
+name = "task-nagger-planner"
+main = "src/index.ts"
+compatibility_date = "2026-11-01"
+compatibility_flags = ["nodejs_compat"]
+
+# Secrets (set with `npx wrangler secret put NAME`, never commit them):
+#   ANTHROPIC_API_KEY   - required
+#   ACCESS_CODES        - optional, comma separated tester codes
+#   REVENUECAT_SECRET   - optional, enables paid subscribers
