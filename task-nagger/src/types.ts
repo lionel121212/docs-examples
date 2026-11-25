@@ -22,6 +22,8 @@ export type Task = {
   nagEveryMin: number;
   nagCount: number;
   enabled: boolean;
+  /** alarm mode: alarm-volume sound that gets through Do Not Disturb */
+  alarm?: boolean;
   /** optional checklist inside the task (e.g. workout exercises) */
   exercises?: Exercise[];
   /** YYYY-MM-DD: the yearly table only counts days from here on */

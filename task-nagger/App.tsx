@@ -26,6 +26,7 @@ import { getUserId } from './src/server';
 import { I18nProvider, Lang, LANGS, translate, useI18n } from './src/i18n';
 import { Onboarding } from './src/Onboarding';
 import { FREE_TASK_LIMIT, loadPremium, roomFor } from './src/premium';
+import { DEFAULT_PREFS, loadPrefs, loadSnooze, Prefs, savePrefs, saveSnooze, SnoozeMap } from './src/prefs';
 import { cancelTodaysNags, rescheduleAll, setupNotifications } from './src/scheduler';
 import { Settings } from './src/Settings';
 import { defaultCategories, loadCategories, loadDone, loadTasks, saveCategories, saveDone, saveTasks } from './src/storage';
@@ -98,11 +99,16 @@ function Main() {
   const latest = useRef({ tasks, done });
   latest.current = { tasks, done };
 
+  const [prefs, setPrefs] = useState<Prefs>(DEFAULT_PREFS);
+  const prefsRef = useRef(prefs);
+  prefsRef.current = prefs;
+  const snoozeRef = useRef<SnoozeMap>({});
+  const [summaryOpen, setSummaryOpen] = useState(false);
   const langRef = useRef(lang);
   langRef.current = lang;
   const resync = useCallback(async (list: Task[], d: DoneMap) => {
     try {
-      await rescheduleAll(list, d, langRef.current);
+      await rescheduleAll(list, d, langRef.current, { prefs: prefsRef.current, snooze: snoozeRef.current });
     } catch (e) {
       console.warn('schedule failed', e);
     }
@@ -110,7 +116,17 @@ function Main() {
 
   useEffect(() => {
     (async () => {
-      const [stored, d, c, prem] = await Promise.all([loadTasks(), loadDone(), loadCategories(langRef.current), loadPremium()]);
+      const [stored, d, c, prem, pr, sn] = await Promise.all([
+        loadTasks(),
+        loadDone(),
+        loadCategories(langRef.current),
+        loadPremium(),
+        loadPrefs(),
+        loadSnooze(),
+      ]);
+      setPrefs(pr);
+      prefsRef.current = pr;
+      snoozeRef.current = sn;
       setDone(d);
       setCategories(c);
       setPremium(prem);
@@ -164,12 +180,39 @@ function Main() {
   }, [resync]);
 
   useEffect(() => {
-    const sub = Notifications.addNotificationResponseReceivedListener(() => {
+    const handle = (r: Notifications.NotificationResponse | null) => {
+      if (!r) return;
       setNow(new Date());
+      const data = (r.notification.request.content.data ?? {}) as { taskId?: string; kind?: string };
+      if (data.kind === 'weekly') {
+        setSummaryOpen(true);
+        return;
+      }
       setTab('today');
-    });
+      const task = latest.current.tasks.find((x) => x.id === data.taskId);
+      if (!task) return;
+      if (r.actionIdentifier === 'done') {
+        setTaskDone(task, new Date(), true);
+      } else if (r.actionIdentifier === 'snooze') {
+        const key = doneKey(task.id, new Date());
+        snoozeRef.current = { ...snoozeRef.current, [key]: Date.now() + 10 * 60_000 };
+        saveSnooze(snoozeRef.current);
+        Notifications.dismissNotificationAsync(r.notification.request.identifier).catch(() => {});
+        resync(latest.current.tasks, latest.current.done);
+      }
+    };
+    const sub = Notifications.addNotificationResponseReceivedListener(handle);
+    // the app may have been started by tapping a button on a notification
+    if (ready) handle(Notifications.getLastNotificationResponse());
     return () => sub.remove();
-  }, []);
+  }, [ready]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const updatePrefs = (p: Prefs) => {
+    setPrefs(p);
+    prefsRef.current = p;
+    savePrefs(p);
+    resync(latest.current.tasks, latest.current.done);
+  };
 
   const persistTasks = async (next: Task[]) => {
     setTasks(next);
@@ -424,6 +467,8 @@ function Main() {
       </View>
 
       <Settings
+        prefs={prefs}
+        onPrefs={updatePrefs}
         onUpgrade={() => {
           setSettings(false);
           openPaywall();

@@ -254,7 +254,18 @@ function Form({ task, isNew, categories, onAddCategory, onSave, onDelete, onClos
         <Text style={s.label}>{t('nag_every')}</Text>
         <Stepper value={draft.nagEveryMin} onChange={(n) => set({ nagEveryMin: n })} min={1} max={60} suffix={t('minutes')} />
         <Text style={s.label}>{t('nag_count')}</Text>
-        <Stepper value={draft.nagCount} onChange={(n) => set({ nagCount: n })} min={0} max={20} suffix={t('times')} />
+        <Stepper value={draft.nagCount} onChange={(n) => set({ nagCount: n })} min={0} max={30} suffix={t('times')} />
+
+        <View style={[s.row, { justifyContent: 'space-between', marginTop: 16 }]}>
+          <View style={{ flex: 1 }}>
+            <Text style={s.label}>🚨 {t('alarm_mode')}</Text>
+            <Text style={s.hint}>{t('alarm_hint')}</Text>
+          </View>
+          <Switch
+            value={!!draft.alarm}
+            onValueChange={(alarm) => set(alarm ? { alarm, nagEveryMin: 1, nagCount: Math.max(draft.nagCount, 30) } : { alarm })}
+          />
+        </View>
 
         <View style={[s.row, { justifyContent: 'space-between', marginTop: 16 }]}>
           <Text style={s.label}>{t('active')}</Text>
