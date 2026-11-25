@@ -19,6 +19,11 @@
 - **איפוס סיסמה:** `POST /auth/forgot` שולח במייל (דרך Resend) קוד של 6 ספרות, תקף ל-15 דקות ועד 5 ניסיונות. `POST /auth/reset` מחליף את הסיסמה, מנתק את כל המכשירים ומחבר את המכשיר הנוכחי.
   הגדרה: `npx wrangler secret put RESEND_API_KEY`, ו-`MAIL_FROM` בקובץ `wrangler.toml`.
 
+## חבר מחייב
+- `POST /buddy/request {email}` שולח בקשה. `POST /buddy/accept {id}` מאשר (רק מי שקיבל את הבקשה). `POST /buddy/remove {id}` מסיר. עד 10 חברים לכל משתמש.
+- `PUT /report` מקבל מהאפליקציה כמה משימות בוצעו היום ואתמול. `GET /buddy` מחזיר לכל חבר שאישר את ההתקדמות שלו.
+- התראה שנשלחת לחבר גם כשהאפליקציה שלו סגורה דורשת Firebase. בינתיים העדכון מופיע כשפותחים את האפליקציה.
+
 ## מי יכול להשתמש
 - **מנויים:** נבדקים מול RevenueCat (`REVENUECAT_SECRET`). מפעילים כשהאפליקציה בחנויות ויש בה מנוי.
 - **בודקים:** קוד מתוך `ACCESS_CODES`. כך אפשר לנסות את התכנון כבר עכשיו, בלי חנות.
@@ -37,7 +42,7 @@
    npx wrangler kv namespace create LIMITS     # מומלץ: הגבלת שימוש והגנה על התחברות
    npx wrangler d1 create task-nagger          # חשבונות וסנכרון
    # מעתיקים את ה-database_id לקובץ wrangler.toml (החלק של d1_databases) ואז:
-   npx wrangler d1 migrations apply task-nagger --remote   # מריץ גם את 0002 (איפוס סיסמה)
+   npx wrangler d1 migrations apply task-nagger --remote   # מריץ גם את 0002 (איפוס סיסמה) ואת 0003 (חברים)
    # מעתיקים את ה-id שמתקבל לקובץ wrangler.toml (החלק של kv_namespaces)
    npx wrangler deploy
    ```

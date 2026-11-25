@@ -20,6 +20,8 @@ import {
   pushSync,
 } from './src/account';
 import { AccountScreen } from './src/AccountScreen';
+import { Buddy, listBuddies, reportProgress } from './src/buddies';
+import { BuddyScreen } from './src/BuddyScreen';
 import { identify, initBilling } from './src/billing';
 import { AchievementPopup } from './src/AchievementPopup';
 import { Achievement, achievements, loadEarned, saveEarned } from './src/achievements';
@@ -112,6 +114,8 @@ function Main() {
   const snoozeRef = useRef<SnoozeMap>({});
   const [summaryOpen, setSummaryOpen] = useState(false);
   const [newAch, setNewAch] = useState<Achievement | null>(null);
+  const [buddyOpen, setBuddyOpen] = useState(false);
+  const [buddies, setBuddies] = useState<Buddy[]>([]);
   const earnedRef = useRef<string[] | null>(null);
   const langRef = useRef(lang);
   langRef.current = lang;
@@ -315,6 +319,9 @@ function Main() {
   };
 
   async function pullIfNewer() {
+    listBuddies()
+      .then(setBuddies)
+      .catch(() => {});
     try {
       const r = await pullSync();
       if (!r) return;
@@ -332,6 +339,7 @@ function Main() {
   useEffect(() => {
     if (!accountEmail || !ready || onboarding || applying.current) return;
     const timer = setTimeout(() => {
+      reportProgress(tasks, done).catch(() => {});
       pushSync({ tasks, categories, done, lang }).catch((e) => {
         if (e instanceof SessionRevoked) onRevoked();
       });
@@ -458,6 +466,16 @@ function Main() {
             onAdd={openNewTask}
             onAI={() => setPlanner(true)}
             onSettings={() => setSettings(true)}
+            buddyLines={buddies
+              .filter((b) => b.status === 'accepted')
+              .map((b) =>
+                b.yesterday && b.yesterday.done < b.yesterday.total
+                  ? t('buddy_missed', { name: b.name, n: b.yesterday.total - b.yesterday.done })
+                  : b.today
+                    ? t('buddy_today', { name: b.name, done: b.today.done, total: b.today.total })
+                    : '',
+              )
+              .filter(Boolean)}
           />
         ) : tab === 'table' ? (
           <WeekTable
@@ -497,6 +515,10 @@ function Main() {
         <Settings
           prefs={prefs}
           onPrefs={updatePrefs}
+          onBuddy={() => {
+            setSettings(false);
+            setBuddyOpen(true);
+          }}
           onUpgrade={() => {
             setSettings(false);
             openPaywall();
@@ -530,6 +552,20 @@ function Main() {
           }}
         />
         <AchievementPopup achievement={newAch} onClose={() => setNewAch(null)} />
+        <BuddyScreen
+          visible={buddyOpen}
+          loggedIn={!!accountEmail}
+          onClose={() => {
+            setBuddyOpen(false);
+            listBuddies()
+              .then(setBuddies)
+              .catch(() => {});
+          }}
+          onSignIn={() => {
+            setBuddyOpen(false);
+            setAccountOpen(true);
+          }}
+        />
         <AIPlanner
           onUpgrade={() => {
             setPlanner(false);

@@ -18,6 +18,7 @@ type Props = {
   onUpgrade: () => void;
   prefs: Prefs;
   onPrefs: (p: Prefs) => void;
+  onBuddy: () => void;
 };
 
 export function Settings({
@@ -32,6 +33,7 @@ export function Settings({
   onUpgrade,
   prefs,
   onPrefs,
+  onBuddy,
 }: Props) {
   const s = useStyles(makeStyles);
   const { t, lang, setLang, dir } = useI18n();
@@ -56,6 +58,13 @@ export function Settings({
             <Text style={{ color: '#64748b', fontSize: 13 }}>
               {accountEmail ? t('logged_in_as', { email: accountEmail }) : t('account_hint')}
             </Text>
+          </View>
+        </Pressable>
+        <Pressable style={s.row} onPress={onBuddy}>
+          <Text style={s.flag}>🤝</Text>
+          <View style={{ flex: 1 }}>
+            <Text style={s.name}>{t('buddy')}</Text>
+            <Text style={s.sub}>{t('buddy_hint')}</Text>
           </View>
         </Pressable>
         <View style={{ height: 12 }} />

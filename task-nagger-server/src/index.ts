@@ -1,6 +1,7 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { handleAuth, handleReset, handleSync, redeemCode } from "./auth";
 import { Env, isAllowed } from "./entitlement";
+import { handleBuddy } from "./buddy";
 import { makeCoach, WeekSchema } from "./coach";
 import { makeOnboarding, ProfileSchema } from "./onboard";
 import { makePlan, PlanError } from "./plan";
@@ -27,6 +28,8 @@ export default {
       return handleReset(req, env, url.pathname);
     if (url.pathname.startsWith("/auth/")) return handleAuth(req, env, url.pathname);
     if (url.pathname === "/sync") return handleSync(req, env);
+    if (url.pathname === "/report" || url.pathname === "/buddy" || url.pathname.startsWith("/buddy/"))
+      return handleBuddy(req, env, url.pathname);
     if (req.method === "POST" && url.pathname === "/redeem") return redeemCode(req, env);
     if (req.method === "POST" && url.pathname === "/coach") return coach(req, env);
     if (req.method !== "POST" || url.pathname !== "/plan") return json(404, { error: "not_found" });

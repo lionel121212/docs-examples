@@ -26,6 +26,7 @@ type Props = {
   onAdd: () => void;
   onAI: () => void;
   onSettings: () => void;
+  buddyLines?: string[];
 };
 
 function minutesUntil(t: Task, now: Date) {
@@ -305,6 +306,8 @@ export function TodayView({
 
 const makeStyles = (C: Palette) =>
   StyleSheet.create({
+    buddy: { backgroundColor: C.soft, borderRadius: 14, padding: 12, marginTop: 12, gap: 4 },
+    buddyTxt: { color: C.text, fontSize: 14, fontWeight: '600' },
     topRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 14 },
     hi: { fontSize: 15, color: C.muted },
     h1: { fontSize: 26, fontWeight: '800', color: C.text },
