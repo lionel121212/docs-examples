@@ -5,7 +5,8 @@ import React, { useState } from 'react';
 import { Alert, KeyboardAvoidingView, Modal, Platform, Pressable, ScrollView, StyleSheet, Switch, Text, TextInput, View } from 'react-native';
 import { Illustration, ICON_KEYS, pickIcon } from './illustrations';
 import { TaskIcon } from './TaskIcon';
-import { ALL_DAYS, Category, DAY_LABELS, Exercise, PALETTE, Task } from './types';
+import { useI18n } from './i18n';
+import { ALL_DAYS, Category, Exercise, PALETTE, Task } from './types';
 
 type Props = {
   task: Task | null; // null = closed
@@ -37,6 +38,7 @@ export function TaskEditor(props: Props) {
 }
 
 function Form({ task, isNew, categories, onAddCategory, onSave, onDelete, onClose }: Omit<Props, 'task'> & { task: Task }) {
+  const { t, days: dayNames, dir } = useI18n();
   const [draft, setDraft] = useState<Task>(task);
   const [showPicker, setShowPicker] = useState(false);
   const [newCat, setNewCat] = useState<string | null>(null);
@@ -69,32 +71,32 @@ function Form({ task, isNew, categories, onAddCategory, onSave, onDelete, onClos
   };
 
   const save = () => {
-    if (!draft.title.trim()) return Alert.alert('חסר שם', 'תן שם למשימה');
-    if (draft.days.length === 0) return Alert.alert('חסרים ימים', 'בחר לפחות יום אחד');
+    if (!draft.title.trim()) return Alert.alert(t('missing_name_t'), t('missing_name_b'));
+    if (draft.days.length === 0) return Alert.alert(t('missing_days_t'), t('missing_days_b'));
     onSave({ ...draft, title: draft.title.trim(), exercises: (draft.exercises ?? []).filter((e) => e.name.trim()) });
   };
 
   const confirmDelete = () =>
-    Alert.alert('למחוק?', `למחוק את "${draft.title}"?`, [
-      { text: 'ביטול', style: 'cancel' },
-      { text: 'מחק', style: 'destructive', onPress: () => onDelete(draft.id) },
+    Alert.alert(t('delete_q'), t('delete_body', { t: draft.title }), [
+      { text: t('cancel'), style: 'cancel' },
+      { text: t('delete'), style: 'destructive', onPress: () => onDelete(draft.id) },
     ]);
 
   const autoKind = pickIcon(draft.title);
 
   return (
-    <KeyboardAvoidingView style={{ flex: 1, backgroundColor: '#fff' }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+    <KeyboardAvoidingView style={{ flex: 1, backgroundColor: '#fff', direction: dir }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
       <ScrollView contentContainerStyle={s.form} keyboardShouldPersistTaps="handled">
         <View style={s.preview}>
           <TaskIcon task={draft} size={92} />
-          <Text style={[s.previewTitle, { color: draft.color }]}>{draft.title || 'משימה חדשה'}</Text>
+          <Text style={[s.previewTitle, { color: draft.color }]}>{draft.title || t('new_task')}</Text>
         </View>
 
-        <Text style={s.label}>שם המשימה</Text>
-        <TextInput style={s.input} value={draft.title} onChangeText={(title) => set({ title })} placeholder="למשל: סימולטור, לשטוף פנים, אופניים…" />
-        <Text style={s.hint}>האיור נבחר אוטומטית לפי השם.</Text>
+        <Text style={s.label}>{t('task_name')}</Text>
+        <TextInput style={s.input} value={draft.title} onChangeText={(title) => set({ title })} placeholder={t('task_name_ph')} />
+        <Text style={s.hint}>{t('auto_hint')}</Text>
 
-        <Text style={s.label}>קטגוריה</Text>
+        <Text style={s.label}>{t('category')}</Text>
         <View style={s.wrap}>
           {categories.map((c) => (
             <Pressable key={c.id} onPress={() => set({ categoryId: c.id })} style={[s.chip, { borderColor: c.color }, draft.categoryId === c.id && { backgroundColor: c.color }]}>
@@ -103,25 +105,25 @@ function Form({ task, isNew, categories, onAddCategory, onSave, onDelete, onClos
           ))}
           {newCat === null ? (
             <Pressable onPress={() => setNewCat('')} style={[s.chip, { borderColor: '#94a3b8', borderStyle: 'dashed' }]}>
-              <Text style={s.chipTxt}>＋ קטגוריה חדשה</Text>
+              <Text style={s.chipTxt}>{t('new_category')}</Text>
             </Pressable>
           ) : (
-            <TextInput autoFocus style={[s.input, { minWidth: 150, paddingVertical: 6 }]} value={newCat} onChangeText={setNewCat} onSubmitEditing={addCategory} onBlur={addCategory} placeholder="שם הקטגוריה" returnKeyType="done" />
+            <TextInput autoFocus style={[s.input, { minWidth: 150, paddingVertical: 6 }]} value={newCat} onChangeText={setNewCat} onSubmitEditing={addCategory} onBlur={addCategory} placeholder={t('category_ph')} returnKeyType="done" />
           )}
         </View>
 
-        <Text style={s.label}>צבע</Text>
+        <Text style={s.label}>{t('color')}</Text>
         <View style={s.wrap}>
           {PALETTE.map((c) => (
             <Pressable key={c} onPress={() => set({ color: c })} style={[s.swatch, { backgroundColor: c }, draft.color === c && s.swatchOn]} />
           ))}
         </View>
 
-        <Text style={s.label}>איור</Text>
+        <Text style={s.label}>{t('illustration')}</Text>
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8, paddingVertical: 4 }}>
           <Pressable onPress={() => set({ icon: 'auto', imageUri: undefined })} style={[s.iconBox, draft.icon === 'auto' && !draft.imageUri && { borderColor: draft.color, borderWidth: 2 }]}>
             <Illustration kind={autoKind} color={draft.color} size={36} />
-            <Text style={s.iconLbl}>אוטומטי</Text>
+            <Text style={s.iconLbl}>{t('auto')}</Text>
           </Pressable>
           {ICON_KEYS.map((k) => (
             <Pressable key={k} onPress={() => set({ icon: k, imageUri: undefined })} style={[s.iconBox, draft.icon === k && !draft.imageUri && { borderColor: draft.color, borderWidth: 2 }]}>
@@ -130,16 +132,16 @@ function Form({ task, isNew, categories, onAddCategory, onSave, onDelete, onClos
           ))}
           <Pressable onPress={choosePhoto} style={[s.iconBox, draft.imageUri && { borderColor: draft.color, borderWidth: 2 }]}>
             <Text style={{ fontSize: 26 }}>🖼️</Text>
-            <Text style={s.iconLbl}>תמונה שלי</Text>
+            <Text style={s.iconLbl}>{t('my_photo')}</Text>
           </Pressable>
         </ScrollView>
 
-        <Text style={s.label}>תרגילים / רשימת משנה</Text>
-        <Text style={s.hint}>למשל באימון כושר: שכיבות סמיכה, 80. בכל יום מסמנים וי על כל תרגיל, וכשכולם מסומנים המשימה נחשבת בוצעה.</Text>
+        <Text style={s.label}>{t('exercises')}</Text>
+        <Text style={s.hint}>{t('exercises_hint')}</Text>
         {(draft.exercises ?? []).map((ex) => (
           <View key={ex.id} style={[s.row, { marginTop: 8 }]}>
-            <TextInput style={[s.input, { flex: 2, fontSize: 16, padding: 8 }]} value={ex.name} placeholder="תרגיל" onChangeText={(name) => setEx(ex.id, { name })} />
-            <TextInput style={[s.input, { flex: 2, fontSize: 16, padding: 8 }]} value={ex.detail} placeholder="כמה? (10×3, 6 ק״ג)" onChangeText={(detail) => setEx(ex.id, { detail })} />
+            <TextInput style={[s.input, { flex: 2, fontSize: 16, padding: 8 }]} value={ex.name} placeholder={t('exercise_ph')} onChangeText={(name) => setEx(ex.id, { name })} />
+            <TextInput style={[s.input, { flex: 2, fontSize: 16, padding: 8 }]} value={ex.detail} placeholder={t('amount_ph')} onChangeText={(detail) => setEx(ex.id, { detail })} />
             <Pressable onPress={() => set({ exercises: (draft.exercises ?? []).filter((e) => e.id !== ex.id) })} style={{ padding: 6 }}>
               <Text style={{ fontSize: 20 }}>🗑️</Text>
             </Pressable>
@@ -149,10 +151,10 @@ function Form({ task, isNew, categories, onAddCategory, onSave, onDelete, onClos
           onPress={() => set({ exercises: [...(draft.exercises ?? []), { id: 'e' + Date.now(), name: '', detail: '' }] })}
           style={[s.chip, { borderColor: draft.color, alignSelf: 'flex-start', marginTop: 10 }]}
         >
-          <Text style={s.chipTxt}>＋ תרגיל</Text>
+          <Text style={s.chipTxt}>{t('add_exercise')}</Text>
         </Pressable>
 
-        <Text style={s.label}>שעה</Text>
+        <Text style={s.label}>{t('time')}</Text>
         <Pressable style={s.timeBtn} onPress={() => setShowPicker(true)}>
           <Text style={s.timeTxt}>{draft.time}</Text>
         </Pressable>
@@ -168,29 +170,29 @@ function Form({ task, isNew, categories, onAddCategory, onSave, onDelete, onClos
           />
         )}
 
-        <Text style={s.label}>ימים</Text>
+        <Text style={s.label}>{t('days')}</Text>
         <View style={s.days}>
           {ALL_DAYS.map((d) => (
             <Pressable key={d} onPress={() => toggleDay(d)} style={[s.day, draft.days.includes(d) && { backgroundColor: draft.color, borderColor: draft.color }]}>
-              <Text style={[s.dayTxt, draft.days.includes(d) && { color: '#fff' }]}>{DAY_LABELS[d]}</Text>
+              <Text style={[s.dayTxt, draft.days.includes(d) && { color: '#fff' }]}>{dayNames[d]}</Text>
             </Pressable>
           ))}
         </View>
 
-        <Text style={s.label}>אם לא עשיתי — להציק כל</Text>
-        <Stepper value={draft.nagEveryMin} onChange={(n) => set({ nagEveryMin: n })} min={1} max={60} suffix="דקות" />
-        <Text style={s.label}>כמה תזכורות נוספות</Text>
-        <Stepper value={draft.nagCount} onChange={(n) => set({ nagCount: n })} min={0} max={20} suffix="פעמים" />
+        <Text style={s.label}>{t('nag_every')}</Text>
+        <Stepper value={draft.nagEveryMin} onChange={(n) => set({ nagEveryMin: n })} min={1} max={60} suffix={t('minutes')} />
+        <Text style={s.label}>{t('nag_count')}</Text>
+        <Stepper value={draft.nagCount} onChange={(n) => set({ nagCount: n })} min={0} max={20} suffix={t('times')} />
 
         <View style={[s.row, { justifyContent: 'space-between', marginTop: 16 }]}>
-          <Text style={s.label}>פעילה</Text>
+          <Text style={s.label}>{t('active')}</Text>
           <Switch value={draft.enabled} onValueChange={(enabled) => set({ enabled })} />
         </View>
 
-        <Pressable style={[s.save, { backgroundColor: draft.color }]} onPress={save}><Text style={s.saveTxt}>שמור</Text></Pressable>
-        <Pressable style={s.cancel} onPress={onClose}><Text style={s.cancelTxt}>ביטול</Text></Pressable>
+        <Pressable style={[s.save, { backgroundColor: draft.color }]} onPress={save}><Text style={s.saveTxt}>{t('save')}</Text></Pressable>
+        <Pressable style={s.cancel} onPress={onClose}><Text style={s.cancelTxt}>{t('cancel')}</Text></Pressable>
         {!isNew && (
-          <Pressable style={s.cancel} onPress={confirmDelete}><Text style={[s.cancelTxt, { color: '#d00' }]}>מחק משימה</Text></Pressable>
+          <Pressable style={s.cancel} onPress={confirmDelete}><Text style={[s.cancelTxt, { color: '#d00' }]}>{t('delete_task')}</Text></Pressable>
         )}
       </ScrollView>
     </KeyboardAvoidingView>

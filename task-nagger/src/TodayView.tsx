@@ -3,7 +3,8 @@ import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import Svg, { Circle } from 'react-native-svg';
 import { dateKey, doneKey } from './dates';
 import { TaskIcon } from './TaskIcon';
-import { Category, DAY_LABELS, DoneMap, Task } from './types';
+import { useI18n } from './i18n';
+import { Category, DoneMap, Task } from './types';
 
 export type Status = 'done' | 'late' | 'pending' | 'none';
 export type Row = Task & { status: Status };
@@ -21,6 +22,7 @@ type Props = {
   onEdit: (t: Task) => void;
   onAdd: () => void;
   onAI: () => void;
+  onSettings: () => void;
 };
 
 function minutesUntil(t: Task, now: Date) {
@@ -28,15 +30,25 @@ function minutesUntil(t: Task, now: Date) {
   return h * 60 + m - (now.getHours() * 60 + now.getMinutes());
 }
 
-function relTime(min: number) {
-  const a = Math.abs(min);
-  const txt = a < 60 ? `${a} דק׳` : `${Math.floor(a / 60)} ש׳${a % 60 ? ` ו-${a % 60} דק׳` : ''}`;
-  return min < 0 ? `באיחור של ${txt}` : min === 0 ? 'עכשיו' : `בעוד ${txt}`;
+type T = ReturnType<typeof useI18n>['t'];
+
+/** "25 בנובמבר" / "Nov 25": the long month name only when it fits next to the buttons. */
+function dateTitle(d: Date, locale: string) {
+  const long = d.toLocaleDateString(locale, { day: 'numeric', month: 'long' });
+  return long.length <= 10 ? long : d.toLocaleDateString(locale, { day: 'numeric', month: 'short' });
 }
 
-function greeting(d: Date) {
+function relTime(t: T, min: number) {
+  const a = Math.abs(min);
+  const h = Math.floor(a / 60);
+  const m = a % 60;
+  const x = a < 60 ? t('min_short', { m: a }) : m ? t('hours_min_short', { h, m }) : t('hours_short', { h });
+  return min < 0 ? t('late_by', { x }) : min === 0 ? t('right_now') : t('in_time', { x });
+}
+
+function greeting(t: T, d: Date) {
   const h = d.getHours();
-  return h < 5 ? 'לילה טוב' : h < 12 ? 'בוקר טוב' : h < 18 ? 'צהריים טובים' : h < 22 ? 'ערב טוב' : 'לילה טוב';
+  return t(h < 5 ? 'gm_night' : h < 12 ? 'gm_morning' : h < 18 ? 'gm_noon' : h < 22 ? 'gm_evening' : 'gm_night');
 }
 
 function Ring({ pct, size = 76 }: { pct: number; size?: number }) {
@@ -57,6 +69,7 @@ function Ring({ pct, size = 76 }: { pct: number; size?: number }) {
 }
 
 function WeekStrip({ tasks, done, now }: { tasks: Task[]; done: DoneMap; now: Date }) {
+  const { days } = useI18n();
   const start = new Date(now.getFullYear(), now.getMonth(), now.getDate() - now.getDay());
   const todayK = dateKey(now);
   return (
@@ -73,7 +86,7 @@ function WeekStrip({ tasks, done, now }: { tasks: Task[]; done: DoneMap; now: Da
         const empty = !sched.length;
         return (
           <View key={i} style={s.weekDay}>
-            <Text style={[s.weekLbl, isToday && { color: '#fff', fontWeight: '900' }]}>{DAY_LABELS[i]}</Text>
+            <Text style={[s.weekLbl, isToday && { color: '#fff', fontWeight: '900' }]}>{days[i]}</Text>
             <View style={[s.weekDot, missed && { backgroundColor: '#f8717166' }, isToday && { borderWidth: 2, borderColor: '#fff' }, (future || empty) && { opacity: 0.35 }]}>
               <View style={[s.weekFill, { height: `${Math.round(ratio * 100)}%` }, ratio === 1 && { backgroundColor: '#4ade80' }]} />
               {ratio === 1 && <Text style={s.weekTick}>✓</Text>}
@@ -105,7 +118,8 @@ function Exercises({ t, done, now, onToggle, light }: { t: Task; done: DoneMap; 
   );
 }
 
-export function TodayView({ rows, tasks, categories, done, now, streak, granted, onDone, onToggleExercise, onEdit, onAdd, onAI }: Props) {
+export function TodayView({ rows, tasks, categories, done, now, streak, granted, onDone, onToggleExercise, onEdit, onAdd, onAI, onSettings }: Props) {
+  const { t, locale, rtl } = useI18n();
   const [showDone, setShowDone] = useState(false);
   const today = rows.filter((r) => r.status !== 'none');
   const open = today.filter((r) => r.status !== 'done');
@@ -118,53 +132,52 @@ export function TodayView({ rows, tasks, categories, done, now, streak, granted,
 
   return (
     <ScrollView contentContainerStyle={{ paddingBottom: 110 }} showsVerticalScrollIndicator={false}>
+      <Text style={s.hi}>{greeting(t, now)} 👋 · {now.toLocaleDateString(locale, { weekday: 'long' })}</Text>
       <View style={s.topRow}>
-        <View style={{ flex: 1 }}>
-          <Text style={s.hi}>{greeting(now)} 👋 · {now.toLocaleDateString('he-IL', { weekday: 'long' })}</Text>
-          <Text style={s.h1} numberOfLines={1} adjustsFontSizeToFit>{now.toLocaleDateString('he-IL', { day: 'numeric', month: 'long' })}</Text>
-        </View>
-        <Pressable style={s.aiPill} onPress={onAI}><Text style={s.aiPillTxt}>✨ תכנון AI</Text></Pressable>
+        <Text style={[s.h1, { flex: 1 }]} numberOfLines={1} adjustsFontSizeToFit>{dateTitle(now, locale)}</Text>
+        <Pressable style={s.aiPill} onPress={onAI}><Text style={s.aiPillTxt}>{t('ai_pill')}</Text></Pressable>
         <Pressable style={s.iconBtn} onPress={onAdd}><Text style={s.iconBtnTxt}>＋</Text></Pressable>
+        <Pressable style={s.iconBtn} onPress={onSettings}><Text style={[s.iconBtnTxt, { fontSize: 18 }]}>⚙️</Text></Pressable>
       </View>
 
       <View style={s.heroCard}>
         <View style={s.hero}>
           <Ring pct={pct} />
           <View style={{ flex: 1 }}>
-            <Text style={s.heroBig}>{finished.length} מתוך {today.length}</Text>
-            <Text style={s.heroSmall}>{pct === 1 && today.length ? 'סיימת הכול להיום! 🎉' : `נשארו ${open.length} משימות להיום`}</Text>
+            <Text style={s.heroBig}>{t('x_of_y', { a: finished.length, b: today.length })}</Text>
+            <Text style={s.heroSmall}>{pct === 1 && today.length ? t('all_done_today') : t('left_today', { n: open.length })}</Text>
           </View>
           <View style={s.streak}>
             <Text style={s.streakN}>🔥 {streak}</Text>
-            <Text style={s.streakL}>{streak ? 'ימים ברצף' : 'התחל רצף'}</Text>
+            <Text style={s.streakL}>{streak ? t('streak_days') : t('streak_start')}</Text>
           </View>
         </View>
         <WeekStrip tasks={tasks} done={done} now={now} />
       </View>
 
-      {!granted && <Text style={s.warn}>⚠️ אין הרשאת התראות. הפעל אותה בהגדרות הטלפון, אחרת התזכורות לא יעבדו.</Text>}
+      {!granted && <Text style={s.warn}>{t('no_permission')}</Text>}
 
       {focus && (
         <>
-          <Text style={s.section}>{focus.status === 'late' ? '⏰ עכשיו' : '⏭️ הבא בתור'}</Text>
+          <Text style={s.section}>{focus.status === 'late' ? t('now_label') : t('next_label')}</Text>
           <Pressable onPress={() => onEdit(focus)} style={[s.focus, { backgroundColor: focus.status === 'late' ? '#dc2626' : focus.color }]}>
             <View style={s.row}>
               <View style={s.focusIcon}><TaskIcon task={{ ...focus, color: '#ffffff' }} size={58} /></View>
               <View style={{ flex: 1 }}>
                 <Text style={s.focusTitle}>{focus.title}</Text>
-                <Text style={s.focusMeta}>{focus.time} · {relTime(minutesUntil(focus, now))}</Text>
+                <Text style={s.focusMeta}>{focus.time} · {relTime(t, minutesUntil(focus, now))}</Text>
               </View>
             </View>
             <Exercises t={focus} done={done} now={now} onToggle={(id) => onToggleExercise(focus, id)} light />
-            {focus.status === 'late' && <Text style={s.nag}>🔔 הטלפון ימשיך להזכיר עד שתסמן</Text>}
+            {focus.status === 'late' && <Text style={s.nag}>{t('nag_hint')}</Text>}
             <Pressable style={s.focusBtn} onPress={() => onDone(focus, true)}>
-              <Text style={[s.focusBtnTxt, { color: focus.status === 'late' ? '#dc2626' : focus.color }]}>✓ סיימתי</Text>
+              <Text style={[s.focusBtnTxt, { color: focus.status === 'late' ? '#dc2626' : focus.color }]}>{t('done_btn')}</Text>
             </Pressable>
           </Pressable>
         </>
       )}
 
-      {rest.length > 0 && <Text style={s.section}>בהמשך היום</Text>}
+      {rest.length > 0 && <Text style={s.section}>{t('later_today')}</Text>}
       {rest.map((r) => (
         <Pressable key={r.id} onPress={() => onEdit(r)} style={[s.card, r.status === 'late' && s.cardLate]}>
           <View style={s.row}>
@@ -174,7 +187,7 @@ export function TodayView({ rows, tasks, categories, done, now, streak, granted,
             <View style={{ flex: 1 }}>
               <Text style={s.title}>{r.title}</Text>
               <Text style={[s.meta, r.status === 'late' && { color: '#dc2626', fontWeight: '700' }]}>
-                {cat(r.categoryId)?.name ?? ''} · {relTime(minutesUntil(r, now))}
+                {cat(r.categoryId)?.name ?? ''} · {relTime(t, minutesUntil(r, now))}
               </Text>
             </View>
             <Pressable onPress={() => onDone(r, true)} hitSlop={8} style={[s.circle, { borderColor: r.color }]} />
@@ -183,12 +196,12 @@ export function TodayView({ rows, tasks, categories, done, now, streak, granted,
         </Pressable>
       ))}
 
-      {!today.length && <Text style={s.empty}>אין משימות היום. יום חופש! 🏖️</Text>}
+      {!today.length && <Text style={s.empty}>{t('free_day')}</Text>}
 
       {finished.length > 0 && (
         <Pressable onPress={() => setShowDone(!showDone)} style={s.doneHead}>
-          <Text style={s.section}>✅ הושלמו ({finished.length})</Text>
-          <Text style={s.chev}>{showDone ? '▾' : '◂'}</Text>
+          <Text style={s.section}>{t('completed_n', { n: finished.length })}</Text>
+          <Text style={s.chev}>{showDone ? '▾' : rtl ? '◂' : '▸'}</Text>
         </Pressable>
       )}
       {showDone && finished.map((r) => (
@@ -212,8 +225,8 @@ const s = StyleSheet.create({
   topRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 14 },
   hi: { fontSize: 15, color: '#64748b' },
   h1: { fontSize: 26, fontWeight: '800', color: '#0f172a' },
-  iconBtn: { width: 44, height: 44, borderRadius: 22, backgroundColor: '#fff', alignItems: 'center', justifyContent: 'center', elevation: 2, shadowColor: '#000', shadowOpacity: 0.08, shadowRadius: 6, shadowOffset: { width: 0, height: 2 } },
-  aiPill: { height: 44, borderRadius: 22, paddingHorizontal: 14, backgroundColor: '#4f46e5', alignItems: 'center', justifyContent: 'center' },
+  iconBtn: { width: 40, height: 40, borderRadius: 20, backgroundColor: '#fff', alignItems: 'center', justifyContent: 'center', elevation: 2, shadowColor: '#000', shadowOpacity: 0.08, shadowRadius: 6, shadowOffset: { width: 0, height: 2 } },
+  aiPill: { height: 40, borderRadius: 20, paddingHorizontal: 14, backgroundColor: '#4f46e5', alignItems: 'center', justifyContent: 'center' },
   aiPillTxt: { color: '#fff', fontWeight: '800', fontSize: 14 },
   iconBtnTxt: { fontSize: 20, color: '#4f46e5', fontWeight: '800' },
   heroCard: { backgroundColor: '#4f46e5', borderRadius: 22, padding: 16, gap: 14 },

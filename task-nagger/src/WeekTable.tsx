@@ -2,7 +2,8 @@ import React, { useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { dateKey, doneKey } from './dates';
 import { TaskIcon } from './TaskIcon';
-import { Category, DAY_LABELS, DoneMap, Task } from './types';
+import { useI18n } from './i18n';
+import { Category, DoneMap, Task } from './types';
 
 type Props = {
   tasks: Task[];
@@ -20,6 +21,7 @@ function startOfWeek(d: Date): Date {
 
 /** Big weekly table: rows = tasks, columns = days. Tap a cell to tick it (today and past days). */
 export function WeekTable({ tasks, done, categories, onToggle, onEdit }: Props) {
+  const { t, days: dayNames, dir, rtl } = useI18n();
   const [offset, setOffset] = useState(0);
   const today = new Date();
   const todayKey = dateKey(today);
@@ -38,22 +40,22 @@ export function WeekTable({ tasks, done, categories, onToggle, onEdit }: Props) 
   return (
     <ScrollView contentContainerStyle={{ paddingBottom: 110 }}>
       <View style={s.nav}>
-        <Pressable onPress={() => setOffset(offset - 1)} style={s.arrow}><Text style={s.arrowTxt}>›</Text></Pressable>
+        <Pressable onPress={() => setOffset(offset - 1)} style={s.arrow}><Text style={s.arrowTxt}>{rtl ? '›' : '‹'}</Text></Pressable>
         <Pressable onPress={() => setOffset(0)}>
-          <Text style={s.title}>{offset === 0 ? 'השבוע' : title}</Text>
-          {offset !== 0 && <Text style={s.back}>חזרה להשבוע</Text>}
+          <Text style={s.title}>{offset === 0 ? t('this_week') : title}</Text>
+          {offset !== 0 && <Text style={s.back}>{t('back_to_week')}</Text>}
         </Pressable>
-        <Pressable onPress={() => setOffset(offset + 1)} style={s.arrow}><Text style={s.arrowTxt}>‹</Text></Pressable>
+        <Pressable onPress={() => setOffset(offset + 1)} style={s.arrow}><Text style={s.arrowTxt}>{rtl ? '‹' : '›'}</Text></Pressable>
       </View>
 
-      <View style={[s.table, { direction: 'rtl' }]}>
-        <View style={[s.row, { direction: 'rtl' }]}>
+      <View style={[s.table, { direction: dir }]}>
+        <View style={[s.row, { direction: dir }]}>
           <View style={s.nameCol} />
           {days.map((d, i) => {
             const isToday = dateKey(d) === todayKey;
             return (
               <View key={i} style={[s.headCell, isToday && s.headToday]}>
-                <Text style={[s.dayName, isToday && { color: '#fff' }]}>{DAY_LABELS[i]}</Text>
+                <Text style={[s.dayName, isToday && { color: '#fff' }]}>{dayNames[i]}</Text>
                 <Text style={[s.dayNum, isToday && { color: '#fff' }]}>{d.getDate()}</Text>
                 <Text style={[s.dayCount, isToday && { color: '#fff' }]}>{dayStats[i].sched ? `${dayStats[i].ok}/${dayStats[i].sched}` : ''}</Text>
               </View>
@@ -71,7 +73,7 @@ export function WeekTable({ tasks, done, categories, onToggle, onEdit }: Props) 
                 <Text style={s.catTxt}>{c.name}</Text>
               </View>
               {list.map((t) => (
-                <View key={t.id} style={[s.row, { direction: 'rtl' }]}>
+                <View key={t.id} style={[s.row, { direction: dir }]}>
                   <Pressable style={s.nameCol} onPress={() => onEdit(t)}>
                     <TaskIcon task={t} size={30} />
                     <View style={{ flex: 1 }}>
@@ -108,7 +110,7 @@ export function WeekTable({ tasks, done, categories, onToggle, onEdit }: Props) 
           );
         })}
       </View>
-      <Text style={s.hint}>לחץ על ריבוע כדי לסמן וי. אפשר לתקן גם ימים קודמים.</Text>
+      <Text style={s.hint}>{t('table_hint')}</Text>
     </ScrollView>
   );
 }
@@ -122,7 +124,7 @@ const s = StyleSheet.create({
   arrowTxt: { fontSize: 32, color: '#2563eb' },
   table: { backgroundColor: '#fff', borderRadius: 16, padding: 8 },
   row: { flexDirection: 'row', alignItems: 'center', marginBottom: 6 },
-  nameCol: { width: NAME_W, flexDirection: 'row', alignItems: 'center', gap: 6, paddingRight: 4 },
+  nameCol: { width: NAME_W, flexDirection: 'row', alignItems: 'center', gap: 6, paddingEnd: 4 },
   headCell: { flex: 1, alignItems: 'center', paddingVertical: 4, borderRadius: 10, marginHorizontal: 1 },
   headToday: { backgroundColor: '#0f172a' },
   dayName: { fontSize: 13, fontWeight: '800', color: '#334155' },

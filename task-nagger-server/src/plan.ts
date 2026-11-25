@@ -32,7 +32,7 @@ Rules:
 - Days: 0=Sunday, 1=Monday ... 6=Saturday. Times: 24h HH:MM.
 - Keep it to what the user asked for; at most 15 tasks.`;
 
-export type PlanRequest = { request: string; today?: string };
+export type PlanRequest = { request: string; today?: string; lang?: string };
 
 /** Ask Claude for a structured plan. Throws Anthropic.APIError subclasses on API failures. */
 export async function makePlan(client: Anthropic, req: PlanRequest): Promise<Plan> {
@@ -45,7 +45,7 @@ export async function makePlan(client: Anthropic, req: PlanRequest): Promise<Pla
     messages: [
       {
         role: "user",
-        content: `${req.today ? `Today is ${req.today}.\n` : ""}<request>\n${req.request}\n</request>`,
+        content: `${req.today ? `Today is ${req.today}.\n` : ""}${req.lang ? `App language: ${req.lang}\n` : ""}<request>\n${req.request}\n</request>`,
       },
     ],
   });

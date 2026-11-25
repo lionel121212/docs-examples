@@ -3,12 +3,11 @@ import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { dateKey } from './dates';
 import { dayInfo, summarize } from './stats';
 import { TaskIcon } from './TaskIcon';
+import { useI18n } from './i18n';
 import { Category, DoneMap, Task } from './types';
 
 const CELL = 15;
 const GAP = 3;
-const MONTHS = ['ינו׳', 'פבר׳', 'מרץ', 'אפר׳', 'מאי', 'יוני', 'יולי', 'אוג׳', 'ספט׳', 'אוק׳', 'נוב׳', 'דצמ׳'];
-const DOW = ['א', 'ב', 'ג', 'ד', 'ה', 'ו', 'ש'];
 
 function colorFor(ratio: number | null, future: boolean): string {
   if (future) return '#eef0f3';
@@ -20,6 +19,8 @@ function colorFor(ratio: number | null, future: boolean): string {
 }
 
 export function YearView({ tasks, done, categories }: { tasks: Task[]; done: DoneMap; categories: Category[] }) {
+  const { t, locale, days, rtl } = useI18n();
+  const MONTHS = useMemo(() => Array.from({ length: 12 }, (_, m) => new Date(2026, m, 1).toLocaleDateString(locale, { month: 'short' })), [locale]);
   const today = new Date();
   const [year, setYear] = useState(today.getFullYear());
   const [catFilter, setCatFilter] = useState<string | null>(null);
@@ -63,20 +64,20 @@ export function YearView({ tasks, done, categories }: { tasks: Task[]; done: Don
     <View style={{ flex: 1 }}>
       <ScrollView contentContainerStyle={{ paddingBottom: 40 }}>
         <View style={s.yearRow}>
-          <Pressable onPress={() => setYear(year - 1)} style={s.arrow}><Text style={s.arrowTxt}>›</Text></Pressable>
+          <Pressable onPress={() => setYear(year - 1)} style={s.arrow}><Text style={s.arrowTxt}>{rtl ? '›' : '‹'}</Text></Pressable>
           <Text style={s.year}>{year}</Text>
-          <Pressable onPress={() => setYear(year + 1)} style={s.arrow}><Text style={s.arrowTxt}>‹</Text></Pressable>
+          <Pressable onPress={() => setYear(year + 1)} style={s.arrow}><Text style={s.arrowTxt}>{rtl ? '‹' : '›'}</Text></Pressable>
         </View>
 
         <View style={s.stats}>
-          <Stat n={String(stats.streak)} label="🔥 רצף ימים" />
-          <Stat n={String(stats.perfect)} label="✅ ימים מושלמים" />
-          <Stat n={String(stats.missed)} label="❌ ימים שפספסתי" />
-          <Stat n={stats.percent + '%'} label="📈 הצלחה" />
+          <Stat n={String(stats.streak)} label={t('st_streak')} />
+          <Stat n={String(stats.perfect)} label={t('st_perfect')} />
+          <Stat n={String(stats.missed)} label={t('st_missed')} />
+          <Stat n={stats.percent + '%'} label={t('st_success')} />
         </View>
 
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={s.chips}>
-          <Chip label="הכול" on={!catFilter && !taskFilter} onPress={() => { setCatFilter(null); setTaskFilter(null); }} color="#334155" />
+          <Chip label={t('all')} on={!catFilter && !taskFilter} onPress={() => { setCatFilter(null); setTaskFilter(null); }} color="#334155" />
           {categories.map((c) => (
             <Chip key={c.id} label={c.name} color={c.color} on={catFilter === c.id} onPress={() => { setCatFilter(catFilter === c.id ? null : c.id); setTaskFilter(null); }} />
           ))}
@@ -91,7 +92,7 @@ export function YearView({ tasks, done, categories }: { tasks: Task[]; done: Don
           {/* grid is always drawn left-to-right (Jan -> Dec) */}
           <View style={{ flexDirection: 'row', direction: 'ltr' }}>
             <View style={{ marginTop: 20 }}>
-              {DOW.map((d, i) => (
+              {days.map((d, i) => (
                 <Text key={i} style={s.dow}>{i % 2 === 0 ? d : ''}</Text>
               ))}
             </View>
@@ -133,20 +134,20 @@ export function YearView({ tasks, done, categories }: { tasks: Task[]; done: Don
             </ScrollView>
           </View>
           <View style={s.legend}>
-            <Text style={s.legTxt}>פספוס</Text>
+            <Text style={s.legTxt}>{t('legend_miss')}</Text>
             {['#fca5a5', '#fde68a', '#86efac', '#16a34a'].map((c) => (
               <View key={c} style={[s.legCell, { backgroundColor: c }]} />
             ))}
-            <Text style={s.legTxt}>הכול בוצע</Text>
+            <Text style={s.legTxt}>{t('legend_all')}</Text>
           </View>
         </View>
 
         {sel && selected && (
           <View style={s.detail}>
             <Text style={s.detailTitle}>
-              {selected.toLocaleDateString('he-IL', { weekday: 'long', day: 'numeric', month: 'long' })}
+              {selected.toLocaleDateString(locale, { weekday: 'long', day: 'numeric', month: 'long' })}
             </Text>
-            {sel.scheduled.length === 0 && <Text style={s.none}>לא היו משימות ביום הזה</Text>}
+            {sel.scheduled.length === 0 && <Text style={s.none}>{t('no_tasks_day')}</Text>}
             {sel.scheduled.map((t) => {
               const ok = sel.doneTasks.includes(t);
               const future = dateKey(selected) > todayKey;
@@ -196,7 +197,7 @@ const s = StyleSheet.create({
   chipTxt: { fontWeight: '600', fontSize: 14 },
   gridCard: { backgroundColor: '#fff', borderRadius: 16, padding: 12, marginTop: 8 },
   cell: { width: CELL, height: CELL, borderRadius: 4 },
-  dow: { height: CELL + GAP, fontSize: 10, color: '#94a3b8', width: 14, textAlign: 'center', lineHeight: CELL },
+  dow: { height: CELL + GAP, fontSize: 10, color: '#94a3b8', width: 20, textAlign: 'center', lineHeight: CELL },
   month: { position: 'absolute', fontSize: 11, color: '#64748b', top: 0 },
   legend: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 4, marginTop: 10 },
   legCell: { width: 14, height: 14, borderRadius: 4 },

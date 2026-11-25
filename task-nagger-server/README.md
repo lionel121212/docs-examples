@@ -5,6 +5,11 @@
 
 **למה צריך שרת:** מפתח ה-API לא יכול להיות בתוך האפליקציה, כי כל אחד היה יכול לחלץ אותו ולהשתמש בו על חשבונך.
 
+## נקודות קצה
+- `POST /onboard`: ניתוח השאלון של משתמש חדש (תובנה, 3 המלצות ותוכנית). **חינמי למשתמש**, ומוגבל ל-5 ניתוחים ביום לכל כתובת IP ו-3 לכל מכשיר, אם מחברים KV.
+- `POST /plan`: תכנון לפי תיאור חופשי. **פרימיום בלבד**.
+- `GET /me`: בודק אם למשתמש יש פרימיום (מנוי או קוד בודק).
+
 ## מי יכול להשתמש
 - **מנויים:** נבדקים מול RevenueCat (`REVENUECAT_SECRET`). מפעילים כשהאפליקציה בחנויות ויש בה מנוי.
 - **בודקים:** קוד מתוך `ACCESS_CODES`. כך אפשר לנסות את התכנון כבר עכשיו, בלי חנות.
@@ -20,6 +25,8 @@
    npx wrangler login
    npx wrangler secret put ANTHROPIC_API_KEY    # מדביקים את המפתח
    npx wrangler secret put ACCESS_CODES         # למשל: mycode123
+   npx wrangler kv namespace create LIMITS     # מומלץ: הגבלת שימוש בשאלון החינמי
+   # מעתיקים את ה-id שמתקבל לקובץ wrangler.toml (החלק של kv_namespaces)
    npx wrangler deploy
    ```
    בסוף מתקבלת כתובת, למשל `https://task-nagger-planner.<שם>.workers.dev`.

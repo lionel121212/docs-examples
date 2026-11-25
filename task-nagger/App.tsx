@@ -4,12 +4,14 @@ import { StatusBar } from 'expo-status-bar';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { AppState, Pressable, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaProvider, useSafeAreaInsets } from 'react-native-safe-area-context';
-import { doneKey } from './src/dates';
+import { dateKey, doneKey } from './src/dates';
+import { I18nProvider, LANGS, translate, useI18n } from './src/i18n';
+import { Onboarding } from './src/Onboarding';
 import { cancelTodaysNags, rescheduleAll, setupNotifications } from './src/scheduler';
-import { loadCategories, loadDone, loadTasks, saveCategories, saveDone, saveTasks } from './src/storage';
+import { Settings } from './src/Settings';
+import { defaultCategories, loadCategories, loadDone, loadTasks, saveCategories, saveDone, saveTasks } from './src/storage';
 import { TaskEditor } from './src/TaskEditor';
 import { Category, DoneMap, PALETTE, Task } from './src/types';
-import { dateKey } from './src/dates';
 import { AIPlanner } from './src/AIPlanner';
 import { WeekTable } from './src/WeekTable';
 import { Row, Status, TodayView } from './src/TodayView';
@@ -21,7 +23,10 @@ function statusFor(t: Task, done: DoneMap, now: Date): Status {
   if (!t.enabled || !t.days.includes(now.getDay())) return 'none';
   if (done[doneKey(t.id, now)]) return 'done';
   const [h, m] = t.time.split(':').map(Number);
-  return now >= new Date(now.getFullYear(), now.getMonth(), now.getDate(), h, m) ? 'late' : 'pending';
+  const due = now >= new Date(now.getFullYear(), now.getMonth(), now.getDate(), h, m);
+  // a task created today whose time already passed starts tomorrow, it isn't "late" on day one
+  if (due && t.createdAt === dateKey(now)) return 'none';
+  return due ? 'late' : 'pending';
 }
 
 function newTask(categoryId: string): Task {
@@ -31,8 +36,13 @@ function newTask(categoryId: string): Task {
   };
 }
 
+const DEFAULT_CAT_KEYS = { health: 'cat_health', study: 'cat_study', sport: 'cat_sport', gaming: 'cat_hobby', other: 'cat_other' } as const;
+
 function Main() {
   const insets = useSafeAreaInsets();
+  const { t, lang, dir } = useI18n();
+  const [onboarding, setOnboarding] = useState<null | { first: boolean }>(null);
+  const [settings, setSettings] = useState(false);
   const [tab, setTab] = useState<'today' | 'table' | 'year'>('today');
   const [tasks, setTasks] = useState<Task[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
@@ -45,18 +55,43 @@ function Main() {
   const latest = useRef({ tasks, done });
   latest.current = { tasks, done };
 
-  const resync = useCallback(async (t: Task[], d: DoneMap) => {
-    try { await rescheduleAll(t, d); } catch (e) { console.warn('schedule failed', e); }
+  const langRef = useRef(lang);
+  langRef.current = lang;
+  const resync = useCallback(async (list: Task[], d: DoneMap) => {
+    try { await rescheduleAll(list, d, langRef.current); } catch (e) { console.warn('schedule failed', e); }
   }, []);
 
   useEffect(() => {
     (async () => {
-      setGranted(await setupNotifications());
-      const [t, d, c] = await Promise.all([loadTasks(), loadDone(), loadCategories()]);
-      setTasks(t); setDone(d); setCategories(c); setReady(true);
-      await resync(t, d);
+      const [stored, d, c] = await Promise.all([loadTasks(), loadDone(), loadCategories(langRef.current)]);
+      setDone(d); setCategories(c);
+      if (stored === null) {
+        setOnboarding({ first: true }); // first launch -> questionnaire
+      } else {
+        setTasks(stored);
+        setGranted(await setupNotifications(langRef.current));
+        await resync(stored, d);
+      }
+      setReady(true);
     })();
   }, [resync]);
+
+  // language switch: rename the built-in categories and re-send notifications in the new language
+  const prevLang = useRef(lang);
+  useEffect(() => {
+    if (!ready || prevLang.current === lang) return;
+    const old = prevLang.current;
+    prevLang.current = lang;
+    const renamed = categories.map((c) => {
+      const key = DEFAULT_CAT_KEYS[c.id as keyof typeof DEFAULT_CAT_KEYS];
+      return key && LANGS.some((l) => translate(l.code, key) === c.name) ? { ...c, name: translate(lang, key) } : c;
+    });
+    setCategories(renamed);
+    saveCategories(renamed).catch(() => {});
+    setupNotifications(lang).catch(() => {});
+    resync(latest.current.tasks, latest.current.done);
+    void old;
+  }, [lang, ready]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     const tick = setInterval(() => setNow(new Date()), 30_000);
@@ -124,10 +159,30 @@ function Main() {
   );
   const streak = useMemo(() => summarize(now.getFullYear(), tasks, done, now).streak, [tasks, done, now]);
 
-  if (!ready) return <View style={s.center}><Text>טוען…</Text></View>;
+  if (!ready) return <View style={s.center}><Text>{t('loading')}</Text></View>;
+
+  if (onboarding) {
+    const cats = categories.length ? categories : defaultCategories(lang);
+    return (
+      <Onboarding
+        categories={cats}
+        askLanguage={onboarding.first}
+        onFinish={async (added, _premium) => {
+          // first run: start from the base categories in the chosen language
+          const nextCats = onboarding.first ? defaultCategories(lang) : cats;
+          setCategories(nextCats);
+          await saveCategories(nextCats);
+          setOnboarding(null);
+          setTab('today');
+          setGranted(await setupNotifications(lang));
+          await persistTasks(onboarding.first ? added : [...tasks, ...added]);
+        }}
+      />
+    );
+  }
 
   return (
-    <View style={[s.root, { paddingTop: insets.top + 10 }]}>
+    <View style={[s.root, { paddingTop: insets.top + 10, direction: dir }]}>
       <StatusBar style="dark" />
       {tab === 'today' ? (
         <TodayView
@@ -143,6 +198,7 @@ function Main() {
           onEdit={(t) => setEditing({ task: t, isNew: false })}
           onAdd={() => setEditing({ task: newTask(categories[0]?.id ?? 'health'), isNew: true })}
           onAI={() => setPlanner(true)}
+          onSettings={() => setSettings(true)}
         />
       ) : tab === 'table' ? (
         <WeekTable
@@ -158,30 +214,35 @@ function Main() {
 
       {tab === 'table' && (
         <Pressable style={[s.fab, { bottom: insets.bottom + 84 }]} onPress={() => setEditing({ task: newTask(categories[0]?.id ?? 'health'), isNew: true })}>
-          <Text style={s.fabTxt}>＋ משימה</Text>
+          <Text style={s.fabTxt}>{t('add_task')}</Text>
         </Pressable>
       )}
 
       <View style={[s.tabs, { paddingBottom: insets.bottom + 8 }]}>
         <Pressable style={s.tab} onPress={() => setTab('today')}>
-          <Text style={[s.tabTxt, tab === 'today' && s.tabOn]}>📋 היום</Text>
+          <Text style={[s.tabTxt, tab === 'today' && s.tabOn]}>{t('tab_today')}</Text>
         </Pressable>
         <Pressable style={s.tab} onPress={() => setTab('table')}>
-          <Text style={[s.tabTxt, tab === 'table' && s.tabOn]}>🗓️ טבלה</Text>
+          <Text style={[s.tabTxt, tab === 'table' && s.tabOn]}>{t('tab_table')}</Text>
         </Pressable>
         <Pressable style={s.tab} onPress={() => setTab('year')}>
-          <Text style={[s.tabTxt, tab === 'year' && s.tabOn]}>📅 שנה</Text>
+          <Text style={[s.tabTxt, tab === 'year' && s.tabOn]}>{t('tab_year')}</Text>
         </Pressable>
       </View>
 
+      <Settings
+        visible={settings}
+        onClose={() => setSettings(false)}
+        onRedoQuiz={() => { setSettings(false); setOnboarding({ first: false }); }}
+      />
       <AIPlanner
         visible={planner}
         categories={categories}
         onClose={() => setPlanner(false)}
         onAdd={async (added, replace) => {
           setPlanner(false);
-          if (added.some((t) => t.categoryId === 'other') && !categories.some((c) => c.id === 'other')) {
-            const next = [...categories, { id: 'other', name: 'כללי', color: '#64748b' }];
+          if (added.some((x) => x.categoryId === 'other') && !categories.some((c) => c.id === 'other')) {
+            const next = [...categories, { id: 'other', name: t('cat_other'), color: '#64748b' }];
             setCategories(next);
             await saveCategories(next);
           }
@@ -205,7 +266,13 @@ function Main() {
 }
 
 export default function App() {
-  return <SafeAreaProvider><Main /></SafeAreaProvider>;
+  return (
+    <SafeAreaProvider>
+      <I18nProvider>
+        <Main />
+      </I18nProvider>
+    </SafeAreaProvider>
+  );
 }
 
 const s = StyleSheet.create({

@@ -1,6 +1,7 @@
 import * as Notifications from 'expo-notifications';
 import { Platform } from 'react-native';
 import { dateKey, doneKey } from './dates';
+import { Lang, StrKey, translate } from './i18n';
 import { DoneMap, Task } from './types';
 
 export const CHANNEL_ID = 'nag-v1';
@@ -11,7 +12,7 @@ const MAX_SCHEDULED = 400;
 
 export { dateKey, doneKey };
 
-export async function setupNotifications(): Promise<boolean> {
+export async function setupNotifications(lang: Lang): Promise<boolean> {
   Notifications.setNotificationHandler({
     handleNotification: async () => ({
       shouldShowBanner: true,
@@ -23,7 +24,7 @@ export async function setupNotifications(): Promise<boolean> {
 
   if (Platform.OS === 'android') {
     await Notifications.setNotificationChannelAsync(CHANNEL_ID, {
-      name: 'תזכורות משימות',
+      name: translate(lang, 'notif_channel'),
       importance: Notifications.AndroidImportance.MAX,
       vibrationPattern: [0, 800, 300, 800, 300, 1200],
       enableVibrate: true,
@@ -40,24 +41,13 @@ export async function setupNotifications(): Promise<boolean> {
   return status === 'granted';
 }
 
-const NAG_LINES = [
-  (t: string) => `⏰ הגיע הזמן: ${t}`,
-  (t: string) => `עדיין לא התחלת — ${t}`,
-  (t: string) => `🔔 אל תדחה! ${t}`,
-  (t: string) => `🚨 ${t} — קום ותעשה את זה עכשיו`,
-  (t: string) => `😤 באמת? ${t} עדיין מחכה לך`,
-  (t: string) => `🔥 אחרון חביב: ${t}`,
-  (t: string) => `🔥🔥 ${t} — אין יותר תירוצים`,
-];
-
-function lineFor(title: string, step: number): string {
-  const fn = NAG_LINES[Math.min(step, NAG_LINES.length - 1)];
-  return fn(title);
+function lineFor(lang: Lang, title: string, step: number): string {
+  return translate(lang, `nag${Math.min(step, 6)}` as StrKey, { t: title });
 }
 
 type Planned = { id: string; at: Date; title: string; body: string; taskId: string };
 
-export function planNotifications(tasks: Task[], done: DoneMap, now: Date = new Date()): Planned[] {
+export function planNotifications(tasks: Task[], done: DoneMap, lang: Lang, now: Date = new Date()): Planned[] {
   const planned: Planned[] = [];
   for (const task of tasks) {
     if (!task.enabled) continue;
@@ -74,7 +64,7 @@ export function planNotifications(tasks: Task[], done: DoneMap, now: Date = new 
           at,
           taskId: task.id,
           title: task.title,
-          body: lineFor(task.title, step),
+          body: lineFor(lang, task.title, step),
         });
       }
     }
@@ -84,9 +74,9 @@ export function planNotifications(tasks: Task[], done: DoneMap, now: Date = new 
 }
 
 /** Cancels everything and re-schedules from scratch based on current tasks + what's done. */
-export async function rescheduleAll(tasks: Task[], done: DoneMap): Promise<number> {
+export async function rescheduleAll(tasks: Task[], done: DoneMap, lang: Lang): Promise<number> {
   await Notifications.cancelAllScheduledNotificationsAsync();
-  const planned = planNotifications(tasks, done);
+  const planned = planNotifications(tasks, done, lang);
   for (const p of planned) {
     await Notifications.scheduleNotificationAsync({
       identifier: p.id,

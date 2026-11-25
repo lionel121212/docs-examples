@@ -8,6 +8,8 @@ export type Env = {
   REVENUECAT_SECRET?: string;
   ENTITLEMENT_ID?: string; // defaults to "premium"
   ACCESS_CODES?: string;
+  /** optional KV namespace for rate limits on the free onboarding analysis */
+  LIMITS?: KVNamespace;
 };
 
 export async function isAllowed(req: Request, env: Env): Promise<boolean> {
