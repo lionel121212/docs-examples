@@ -101,3 +101,67 @@ const tokenD = (await call("/auth/login", { body: creds("phone-D") })).json.toke
 assert.equal((await call("/sync", { method: "PUT", token: tokenD, body: { data: { big } } })).status, 413);
 
 console.log("accounts + single device + sync + premium: ok");
+
+// ---- forgot / reset password
+const mailEnv = { ...env, RESEND_API_KEY: "re_test", MAIL_FROM: "noreply@example.com" };
+let lastMail: any = null as any;
+const realFetch = globalThis.fetch;
+globalThis.fetch = (async (url: any, init: any) => {
+  if (String(url).includes("api.resend.com")) {
+    lastMail = JSON.parse(init.body);
+    return new Response("{}", { status: 200 });
+  }
+  return realFetch(url, init);
+}) as typeof fetch;
+const callM = async (path: string, body: unknown) => {
+  const r = await worker.fetch(
+    new Request("https://x" + path, { method: "POST", body: JSON.stringify(body) }),
+    mailEnv,
+  );
+  return { status: r.status, json: (await r.json()) as any };
+};
+assert.equal(
+  (await call("/auth/forgot", { body: { email: "lio@example.com" } })).json.error,
+  "mail_unavailable",
+  "no mail config -> clear error",
+);
+assert.equal(
+  (await callM("/auth/forgot", { email: "nobody@example.com" })).json.sent,
+  true,
+  "unknown email: same answer",
+);
+assert.equal(lastMail, null, "but no mail is sent");
+assert.equal((await callM("/auth/forgot", { email: "LIO@example.com", lang: "he" })).status, 200);
+assert.deepEqual((lastMail as any).to, ["lio@example.com"]);
+const code = /letter-spacing:6px">(\d{6})</.exec((lastMail as any).html)![1];
+assert.equal(
+  (
+    await callM("/auth/reset", {
+      email: "lio@example.com",
+      code: "000000",
+      password: "brand new pass",
+      deviceId: "phone-E",
+    })
+  ).json.error,
+  "bad_code",
+);
+const reset = await callM("/auth/reset", {
+  email: "lio@example.com",
+  code,
+  password: "brand new pass",
+  deviceId: "phone-E",
+  deviceName: "phone-E",
+});
+assert.equal(reset.status, 200);
+assert.ok(reset.json.token, "signed in after reset");
+assert.equal(
+  (await callM("/auth/reset", { email: "lio@example.com", code, password: "another pass!", deviceId: "phone-E" }))
+    .status,
+  401,
+  "code works once",
+);
+assert.equal((await call("/sync", { token: tokenD })).status, 401, "old devices signed out");
+assert.equal((await call("/auth/login", { body: creds("phone-E") })).status, 401, "old password no longer works");
+assert.equal((await call("/auth/login", { body: { ...creds("phone-E"), password: "brand new pass" } })).status, 200);
+globalThis.fetch = realFetch;
+console.log("password reset: ok");

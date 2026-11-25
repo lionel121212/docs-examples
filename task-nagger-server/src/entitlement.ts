@@ -13,6 +13,9 @@ export type Env = {
   LIMITS?: KVNamespace;
   /** optional D1 database for accounts + sync (see migrations/) */
   DB?: D1Database;
+  /** optional: Resend API key + sender address for password-reset emails */
+  RESEND_API_KEY?: string;
+  MAIL_FROM?: string;
 };
 
 export async function isAllowed(req: Request, env: Env): Promise<boolean> {

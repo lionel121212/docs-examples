@@ -23,3 +23,8 @@ compatibility_flags = ["nodejs_compat"]
 # database_name = "task-nagger"
 # database_id = "<id>"
 # migrations_dir = "migrations"
+
+# Password reset emails (Resend, free tier): `npx wrangler secret put RESEND_API_KEY`
+# and set the sender (a domain verified in Resend), e.g.:
+# [vars]
+# MAIL_FROM = "Task Nagger <no-reply@your-domain.com>"

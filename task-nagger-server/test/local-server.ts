@@ -3,7 +3,22 @@ import { createServer } from "node:http";
 import worker from "../src/index";
 import { makeD1 } from "./d1-sqlite";
 
-const env = { ANTHROPIC_API_KEY: "test", ACCESS_CODES: "vip1", DB: makeD1() };
+const env = {
+  ANTHROPIC_API_KEY: "test",
+  ACCESS_CODES: "vip1",
+  DB: makeD1(),
+  RESEND_API_KEY: "mock",
+  MAIL_FROM: "test@local",
+};
+// emails are written to the console instead of being sent
+const realFetch = globalThis.fetch;
+globalThis.fetch = (async (url: any, init: any) => {
+  if (String(url).includes("api.resend.com")) {
+    console.log("MAIL", init.body);
+    return new Response("{}", { status: 200 });
+  }
+  return realFetch(url, init);
+}) as typeof fetch; // MOCK_MAIL
 const cors = {
   "access-control-allow-origin": "*",
   "access-control-allow-headers": "*",

@@ -1,5 +1,5 @@
 import Anthropic from "@anthropic-ai/sdk";
-import { handleAuth, handleSync, redeemCode } from "./auth";
+import { handleAuth, handleReset, handleSync, redeemCode } from "./auth";
 import { Env, isAllowed } from "./entitlement";
 import { makeCoach, WeekSchema } from "./coach";
 import { makeOnboarding, ProfileSchema } from "./onboard";
@@ -23,6 +23,8 @@ export default {
       return json(200, { premium: await isAllowed(req, env) });
     }
     if (req.method === "POST" && url.pathname === "/onboard") return onboard(req, env);
+    if (req.method === "POST" && (url.pathname === "/auth/forgot" || url.pathname === "/auth/reset"))
+      return handleReset(req, env, url.pathname);
     if (url.pathname.startsWith("/auth/")) return handleAuth(req, env, url.pathname);
     if (url.pathname === "/sync") return handleSync(req, env);
     if (req.method === "POST" && url.pathname === "/redeem") return redeemCode(req, env);

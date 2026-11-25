@@ -171,3 +171,46 @@ export async function redeem(code: string): Promise<boolean> {
     return false;
   }
 }
+
+/** Ask the server to email a reset code. */
+export async function forgotPassword(
+  email: string,
+  lang: string,
+): Promise<'sent' | 'mail_unavailable' | 'invalid_email' | 'too_many_attempts' | 'offline' | 'unavailable'> {
+  if (!PLANNER_URL) return 'unavailable';
+  try {
+    const res = await fetch(`${PLANNER_URL}/auth/forgot`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ email, lang }),
+    });
+    if (res.ok) return 'sent';
+    const j = (await res.json().catch(() => ({}))) as { error?: string };
+    if (j.error === 'mail_unavailable' || j.error === 'invalid_email' || j.error === 'too_many_attempts') return j.error;
+    return 'unavailable';
+  } catch {
+    return 'offline';
+  }
+}
+
+/** Set a new password with the emailed code; signs this device in. */
+export async function resetPassword(email: string, code: string, password: string): Promise<AuthResult | { ok: false; error: 'bad_code' }> {
+  if (!PLANNER_URL) return { ok: false, error: 'unavailable' };
+  try {
+    const res = await fetch(`${PLANNER_URL}/auth/reset`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ email, code, password, deviceId: await getUserId(), deviceName: deviceName() }),
+    });
+    const j = (await res.json().catch(() => ({}))) as any;
+    if (res.ok && j.token) {
+      await saveLogin(j.token, j.user.email, j.user.id);
+      return { ok: true, token: j.token, email: j.user.email, id: j.user.id, premium: !!j.user.premium };
+    }
+    if (j.error === 'bad_code') return { ok: false, error: 'bad_code' };
+    if (j.error === 'weak_password' || j.error === 'too_many_attempts') return { ok: false, error: j.error };
+    return { ok: false, error: 'unavailable' };
+  } catch {
+    return { ok: false, error: 'offline' };
+  }
+}

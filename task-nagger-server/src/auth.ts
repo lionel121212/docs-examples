@@ -176,6 +176,88 @@ export async function handleAuth(req: Request, env: Env, path: string): Promise<
   return json(404, { error: "not_found" });
 }
 
+const RESET_MINUTES = 15;
+const RESET_TEXT: Record<string, { subject: string; body: string }> = {
+  he: { subject: "קוד לאיפוס הסיסמה", body: "הקוד שלך לאיפוס הסיסמה במציק משימות הוא:" },
+  en: { subject: "Your password reset code", body: "Your Task Nagger password reset code is:" },
+  ar: { subject: "رمز إعادة تعيين كلمة المرور", body: "رمز إعادة تعيين كلمة المرور الخاص بك هو:" },
+  ru: { subject: "Код для сброса пароля", body: "Твой код для сброса пароля:" },
+  es: { subject: "Tu código para restablecer la contraseña", body: "Tu código para restablecer la contraseña es:" },
+};
+
+async function sendMail(env: Env, to: string, subject: string, html: string): Promise<boolean> {
+  const res = await fetch("https://api.resend.com/emails", {
+    method: "POST",
+    headers: { authorization: `Bearer ${env.RESEND_API_KEY}`, "content-type": "application/json" },
+    body: JSON.stringify({ from: env.MAIL_FROM, to: [to], subject, html }),
+  });
+  return res.ok;
+}
+
+/**
+ * Forgot password: POST /auth/forgot {email, lang} emails a 6-digit code (15 minutes);
+ * POST /auth/reset {email, code, password, deviceId, deviceName} sets the new password,
+ * signs out every device and signs this one in.
+ */
+export async function handleReset(req: Request, env: Env, path: string): Promise<Response> {
+  if (!env.DB) return json(503, { error: "accounts_unavailable" });
+  let body: Body & { code?: unknown; lang?: unknown };
+  try {
+    body = await req.json();
+  } catch {
+    return json(400, { error: "bad_json" });
+  }
+  const email = typeof body.email === "string" ? body.email.trim().toLowerCase() : "";
+  if (!validEmail(email)) return json(400, { error: "invalid_email" });
+  if (!(await underLimit(env.LIMITS, `reset:${email}`, 8))) return json(429, { error: "too_many_attempts" });
+
+  if (path === "/auth/forgot") {
+    if (!env.RESEND_API_KEY || !env.MAIL_FROM) return json(503, { error: "mail_unavailable" });
+    const user = await db(env).prepare("SELECT id FROM users WHERE email = ?").bind(email).first();
+    // same answer whether the account exists or not
+    if (user) {
+      const code = String(100000 + (crypto.getRandomValues(new Uint32Array(1))[0] % 900000));
+      await db(env)
+        .prepare(
+          "INSERT INTO password_resets (email, code_hash, expires_at, attempts) VALUES (?, ?, ?, 0) ON CONFLICT(email) DO UPDATE SET code_hash = excluded.code_hash, expires_at = excluded.expires_at, attempts = 0",
+        )
+        .bind(email, await sha256(code), Date.now() + RESET_MINUTES * 60_000)
+        .run();
+      const txt = RESET_TEXT[typeof body.lang === "string" ? body.lang : "en"] ?? RESET_TEXT.en;
+      const html = `<div style="font-family:sans-serif;font-size:16px"><p>${txt.body}</p><p style="font-size:32px;font-weight:bold;letter-spacing:6px">${code}</p><p style="color:#64748b">${RESET_MINUTES} min</p></div>`;
+      if (!(await sendMail(env, email, txt.subject, html))) return json(502, { error: "mail_failed" });
+    }
+    return json(200, { sent: true });
+  }
+
+  if (path === "/auth/reset") {
+    const code = typeof body.code === "string" ? body.code.trim() : "";
+    const { password, deviceId, deviceName } = readCreds(body);
+    if (password.length < 8 || password.length > 200) return json(400, { error: "weak_password" });
+    if (!deviceId) return json(400, { error: "no_device" });
+    const row = await db(env)
+      .prepare("SELECT code_hash, expires_at, attempts FROM password_resets WHERE email = ?")
+      .bind(email)
+      .first<{ code_hash: string; expires_at: number; attempts: number }>();
+    if (!row || row.expires_at < Date.now() || row.attempts >= 5) return json(401, { error: "bad_code" });
+    if (!sameString(await sha256(code), row.code_hash)) {
+      await db(env).prepare("UPDATE password_resets SET attempts = attempts + 1 WHERE email = ?").bind(email).run();
+      return json(401, { error: "bad_code" });
+    }
+    const user = await db(env).prepare("SELECT * FROM users WHERE email = ?").bind(email).first<User>();
+    if (!user) return json(401, { error: "bad_code" });
+    const salt = randomId();
+    const hash = await hashPassword(password, salt);
+    await db(env).batch([
+      db(env).prepare("UPDATE users SET pass_hash = ?, salt = ? WHERE id = ?").bind(hash, salt, user.id),
+      db(env).prepare("DELETE FROM password_resets WHERE email = ?").bind(email),
+    ]);
+    // createSession drops every other session: all old devices are signed out
+    return json(200, await createSession(env, { ...user, pass_hash: hash, salt }, deviceId, deviceName));
+  }
+  return json(404, { error: "not_found" });
+}
+
 /** GET / PUT the user's synced app data (one JSON blob, last write wins). */
 export async function handleSync(req: Request, env: Env): Promise<Response> {
   const me = await authenticate(req, env);

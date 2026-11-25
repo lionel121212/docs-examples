@@ -11,7 +11,7 @@ import {
   TextInput,
   View,
 } from 'react-native';
-import { authenticate, AuthResult } from './account';
+import { authenticate, AuthResult, forgotPassword, resetPassword } from './account';
 import { StrKey, useI18n } from './i18n';
 import { Palette, useStyles, useTheme } from './theme';
 
@@ -31,12 +31,14 @@ const ERRORS: Record<string, StrKey> = {
   too_many_attempts: 'err_many',
   unavailable: 'err_unavailable',
   offline: 'offline',
+  bad_code: 'err_code',
+  mail_unavailable: 'err_mail_off',
 };
 
 export function AccountScreen({ visible, email, onClose, onLoggedIn, onLogout }: Props) {
   const s = useStyles(makeStyles);
   const C = useTheme();
-  const { t, dir } = useI18n();
+  const { t, dir, lang } = useI18n();
   const [mode, setMode] = useState<'login' | 'register'>('login');
   const [mail, setMail] = useState('');
   const [password, setPassword] = useState('');
@@ -45,6 +47,36 @@ export function AccountScreen({ visible, email, onClose, onLoggedIn, onLogout }:
   // set when another device holds the account: we ask before kicking it out
   const [conflict, setConflict] = useState<string | null>(null);
   const [confirmPassword, setConfirmPassword] = useState('');
+  // forgot password: 'ask' = enter email, 'code' = enter code + new password
+  const [resetStep, setResetStep] = useState<null | 'ask' | 'code'>(null);
+  const [code, setCode] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [info, setInfo] = useState<string | null>(null);
+
+  const sendCode = async () => {
+    setBusy(true);
+    setError(null);
+    const r = await forgotPassword(mail.trim(), lang);
+    setBusy(false);
+    if (r === 'sent') {
+      setResetStep('code');
+      setInfo(t('reset_sent', { email: mail.trim() }));
+    } else setError(t(ERRORS[r] ?? 'went_wrong'));
+  };
+
+  const confirmReset = async () => {
+    setBusy(true);
+    setError(null);
+    const r = await resetPassword(mail.trim(), code.trim(), newPassword);
+    setBusy(false);
+    if (r.ok) {
+      setResetStep(null);
+      setCode('');
+      setNewPassword('');
+      setInfo(null);
+      onLoggedIn(r);
+    } else setError(t(ERRORS[r.error] ?? 'went_wrong'));
+  };
 
   const reset = () => {
     setPassword('');
@@ -98,6 +130,55 @@ export function AccountScreen({ visible, email, onClose, onLoggedIn, onLogout }:
                 <Text style={s.logoutTxt}>{t('logout')}</Text>
               </Pressable>
             </>
+          ) : resetStep ? (
+            <View style={s.card}>
+              <Text style={s.me}>🔑 {t('reset_title')}</Text>
+              <Text style={s.label}>{t('email')}</Text>
+              <TextInput
+                style={s.input}
+                value={mail}
+                onChangeText={setMail}
+                keyboardType="email-address"
+                autoCapitalize="none"
+                editable={resetStep === 'ask'}
+              />
+              {resetStep === 'ask' ? (
+                <Pressable
+                  style={[s.primary, (!mail.trim() || busy) && { opacity: 0.5 }]}
+                  disabled={!mail.trim() || busy}
+                  onPress={sendCode}
+                >
+                  {busy ? <ActivityIndicator color="#fff" /> : <Text style={s.primaryTxt}>{t('reset_send')}</Text>}
+                </Pressable>
+              ) : (
+                <>
+                  {info && <Text style={s.note}>{info}</Text>}
+                  <Text style={s.label}>{t('reset_code')}</Text>
+                  <TextInput style={[s.input, s.codeInput]} value={code} onChangeText={setCode} keyboardType="number-pad" maxLength={6} />
+                  <Text style={s.label}>{t('new_password')}</Text>
+                  <TextInput
+                    style={s.input}
+                    value={newPassword}
+                    onChangeText={setNewPassword}
+                    secureTextEntry
+                    autoCapitalize="none"
+                    autoComplete="new-password"
+                  />
+                  <Text style={s.small}>{t('password_hint')}</Text>
+                  <Pressable
+                    style={[s.primary, (code.trim().length !== 6 || newPassword.length < 8 || busy) && { opacity: 0.5 }]}
+                    disabled={code.trim().length !== 6 || newPassword.length < 8 || busy}
+                    onPress={confirmReset}
+                  >
+                    {busy ? <ActivityIndicator color="#fff" /> : <Text style={s.primaryTxt}>{t('reset_confirm')}</Text>}
+                  </Pressable>
+                </>
+              )}
+              {error && <Text style={s.error}>{error}</Text>}
+              <Pressable style={s.secondary} onPress={() => (setResetStep(null), setError(null), setInfo(null))}>
+                <Text style={s.secondaryTxt}>{t('cancel')}</Text>
+              </Pressable>
+            </View>
           ) : conflict ? (
             <View style={[s.card, s.warnCard]}>
               <Text style={s.warnTitle}>📱 {t('other_device_title')}</Text>
@@ -165,6 +246,11 @@ export function AccountScreen({ visible, email, onClose, onLoggedIn, onLogout }:
                   <Text style={s.primaryTxt}>{t(mode === 'login' ? 'login_btn' : 'register_btn')}</Text>
                 )}
               </Pressable>
+              {mode === 'login' && (
+                <Pressable style={s.secondary} onPress={() => (setResetStep('ask'), setError(null))}>
+                  <Text style={[s.secondaryTxt, { textDecorationLine: 'underline' }]}>{t('forgot_password')}</Text>
+                </Pressable>
+              )}
               <Text style={[s.note, { textAlign: 'center', marginTop: 10 }]}>{t('one_device_note')}</Text>
             </>
           )}
@@ -180,6 +266,7 @@ export function AccountScreen({ visible, email, onClose, onLoggedIn, onLogout }:
 
 const makeStyles = (C: Palette) =>
   StyleSheet.create({
+    codeInput: { fontSize: 26, letterSpacing: 8, textAlign: 'center', fontWeight: '900' },
     wrap: { padding: 20, paddingTop: 52, flexGrow: 1 },
     h1: { fontSize: 28, fontWeight: '900', color: C.text, marginBottom: 12 },
     hint: { fontSize: 15, color: C.text2, marginBottom: 16, lineHeight: 21 },

@@ -16,7 +16,8 @@
 - **מכשיר אחד:** התחברות ממכשיר שני מחזירה `409 other_device` עם שם המכשיר המחובר. רק התחברות חוזרת עם `force: true` **והסיסמה** מנתקת את המכשיר הקודם, וזה מקבל `401 session_revoked` בפנייה הבאה שלו.
 - **פרימיום:** קוד בודק שמוזן כשמחוברים (`POST /redeem`) הופך את כל החשבון לפרימיום, בכל מכשיר.
 - **הגנה:** עד 20 ניסיונות התחברות ביום לכל אימייל ו-60 לכל IP. עובד רק עם ה-KV.
-- **עוד לא קיים:** איפוס סיסמה במייל.
+- **איפוס סיסמה:** `POST /auth/forgot` שולח במייל (דרך Resend) קוד של 6 ספרות, תקף ל-15 דקות ועד 5 ניסיונות. `POST /auth/reset` מחליף את הסיסמה, מנתק את כל המכשירים ומחבר את המכשיר הנוכחי.
+  הגדרה: `npx wrangler secret put RESEND_API_KEY`, ו-`MAIL_FROM` בקובץ `wrangler.toml`.
 
 ## מי יכול להשתמש
 - **מנויים:** נבדקים מול RevenueCat (`REVENUECAT_SECRET`). מפעילים כשהאפליקציה בחנויות ויש בה מנוי.
@@ -36,7 +37,7 @@
    npx wrangler kv namespace create LIMITS     # מומלץ: הגבלת שימוש והגנה על התחברות
    npx wrangler d1 create task-nagger          # חשבונות וסנכרון
    # מעתיקים את ה-database_id לקובץ wrangler.toml (החלק של d1_databases) ואז:
-   npx wrangler d1 migrations apply task-nagger --remote
+   npx wrangler d1 migrations apply task-nagger --remote   # מריץ גם את 0002 (איפוס סיסמה)
    # מעתיקים את ה-id שמתקבל לקובץ wrangler.toml (החלק של kv_namespaces)
    npx wrangler deploy
    ```
