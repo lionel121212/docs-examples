@@ -1,15 +1,19 @@
 {
   "port": 8000,
-  "update_hz": 20,
+  "update_hz": 30,
   "buttons": {
-    "lights": "l",
-    "wipers": "w",
-    "camera": "c",
-    "reset": "r",
-    "pit_limiter": "p",
-    "gear_up": "e",
-    "gear_down": "q",
-    "ignition": "i"
+    "lights":      { "key": "l", "icon": "lights",   "color": "#facc15", "toggle": true },
+    "wipers":      { "key": "w", "icon": "wipers",   "color": "#38bdf8", "toggle": true },
+    "camera":      { "key": "c", "icon": "camera",   "color": "#a78bfa" },
+    "reset":       { "key": "r", "icon": "reset",    "color": "#e2e8f0" },
+    "pit_limiter": { "key": "p", "icon": "limiter",  "color": "#fb923c", "toggle": true },
+    "gear_up":     { "key": "e", "icon": "up",       "color": "#4ade80" },
+    "gear_down":   { "key": "q", "icon": "down",     "color": "#f43f5e" },
+    "ignition":    { "key": "i", "icon": "power",    "color": "#ef4444", "toggle": true },
+    "abs":         { "key": "a", "icon": "abs",      "color": "#3b82f6" },
+    "tc":          { "key": "t", "icon": "tc",       "color": "#a3e635" },
+    "brake_bias":  { "key": "b", "icon": "sliders",  "color": "#f472b6" },
+    "radio":       { "key": "h", "icon": "headset",  "color": "#2dd4bf" }
   },
-  "_comment": "Each key here must be mapped to the same action in Assetto Corsa: Settings > Controls. Edit the key names to match your bindings."
+  "_comment": "key = the keyboard key sent to Assetto Corsa. Map the same key to the action in AC: Settings > Controls. icon and color set how the button looks. toggle = the button stays lit after a press. Change keys to match your AC bindings."
 }
