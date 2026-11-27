@@ -1,0 +1,125 @@
+<!doctype html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+<title>Sim Controller</title>
+<style>
+  :root { color-scheme: dark; }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  body {
+    margin: 0; min-height: 100vh; background: #0b0d10; color: #e8eaed;
+    font-family: system-ui, sans-serif; padding: 12px;
+    display: grid; grid-template-columns: 1fr 1.2fr; gap: 12px;
+  }
+  @media (orientation: portrait) {
+    body { grid-template-columns: 1fr; }
+  }
+  .panel { background: #161a20; border-radius: 14px; padding: 14px; }
+  .speed { font-size: 64px; font-weight: 700; line-height: 1; text-align: center; }
+  .unit { text-align: center; opacity: .6; margin-bottom: 8px; }
+  .row { display: flex; justify-content: space-between; font-size: 18px; margin: 6px 0; }
+  .bar { height: 10px; background: #222831; border-radius: 6px; overflow: hidden; margin: 4px 0 10px; }
+  .bar > div { height: 100%; background: #4ade80; width: 0%; }
+  .bar.brake > div { background: #f87171; }
+  .buttons { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+  button {
+    min-height: 64px; border: 0; border-radius: 12px; background: #242b35;
+    color: #e8eaed; font-size: 18px; font-weight: 600; touch-action: manipulation;
+  }
+  button:active { background: #3a4656; }
+  .music .title { font-size: 20px; font-weight: 700; }
+  .music .artist { opacity: .7; margin-bottom: 10px; }
+  .music .controls { display: flex; gap: 10px; }
+  .music .controls button { flex: 1; }
+  .status { font-size: 14px; opacity: .6; text-align: center; margin-top: 8px; }
+</style>
+</head>
+<body>
+
+<div class="panel">
+  <div class="speed" id="speed">0</div>
+  <div class="unit">km/h</div>
+  <div class="row"><span>הילוך</span><span id="gear">N</span></div>
+  <div class="row"><span>סל"ד</span><span id="rpm">0</span></div>
+  <div class="row"><span>דלק</span><span id="fuel">0</span></div>
+  <div>גז</div>
+  <div class="bar"><div id="gas"></div></div>
+  <div>בלם</div>
+  <div class="bar brake"><div id="brake"></div></div>
+  <div class="status" id="status">מתחבר...</div>
+</div>
+
+<div style="display:flex;flex-direction:column;gap:12px">
+  <div class="panel music">
+    <div class="title" id="title">אין נגינה</div>
+    <div class="artist" id="artist"></div>
+    <div class="controls">
+      <button onclick="press('prev')">⏮</button>
+      <button onclick="press('play_pause')">⏯</button>
+      <button onclick="press('next')">⏭</button>
+    </div>
+  </div>
+  <div class="panel">
+    <div class="buttons" id="buttons"></div>
+  </div>
+</div>
+
+<script>
+const $ = (id) => document.getElementById(id);
+const LABELS = {
+  lights: "אורות", wipers: "מגבים", camera: "מצלמה", reset: "איפוס",
+  pit_limiter: "Pit limiter", gear_up: "הילוך ↑", gear_down: "הילוך ↓", ignition: "מנוע"
+};
+
+async function loadButtons() {
+  const res = await fetch("/config");
+  const { buttons } = await res.json();
+  const box = $("buttons");
+  for (const name of Object.keys(buttons)) {
+    const b = document.createElement("button");
+    b.textContent = LABELS[name] || name;
+    b.onclick = () => press(name);
+    box.appendChild(b);
+  }
+}
+
+async function press(name) {
+  try {
+    await fetch("/button", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name })
+    });
+  } catch (e) {}
+}
+
+function connect() {
+  const proto = location.protocol === "https:" ? "wss" : "ws";
+  const ws = new WebSocket(`${proto}://${location.host}/ws`);
+  ws.onopen = () => $("status").textContent = "מחובר";
+  ws.onclose = () => { $("status").textContent = "מנותק, מתחבר מחדש..."; setTimeout(connect, 1000); };
+  ws.onmessage = (ev) => {
+    const { telemetry: t, media: m } = JSON.parse(ev.data);
+    if (t) {
+      $("speed").textContent = Math.round(t.speed);
+      $("gear").textContent = t.gear === 0 ? "N" : t.gear < 0 ? "R" : t.gear;
+      $("rpm").textContent = t.rpm;
+      $("fuel").textContent = t.fuel;
+      $("gas").style.width = (t.gas * 100) + "%";
+      $("brake").style.width = (t.brake * 100) + "%";
+    } else {
+      $("status").textContent = "AC לא פועל";
+    }
+    if (m) {
+      $("title").textContent = m.title || "אין נגינה";
+      $("artist").textContent = m.artist;
+    }
+  };
+}
+
+loadButtons();
+connect();
+</script>
+</body>
+</html>

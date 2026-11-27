@@ -1,0 +1,15 @@
+{
+  "port": 8000,
+  "update_hz": 20,
+  "buttons": {
+    "lights": "l",
+    "wipers": "w",
+    "camera": "c",
+    "reset": "r",
+    "pit_limiter": "p",
+    "gear_up": "e",
+    "gear_down": "q",
+    "ignition": "i"
+  },
+  "_comment": "Each key here must be mapped to the same action in Assetto Corsa: Settings > Controls. Edit the key names to match your bindings."
+}
