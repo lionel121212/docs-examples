@@ -1,6 +1,5 @@
 {
   "port": 8000,
-  "update_hz": 30,
   "buttons": {
     "lights":      { "key": "l", "icon": "lights",   "color": "#facc15", "toggle": true },
     "wipers":      { "key": "w", "icon": "wipers",   "color": "#38bdf8", "toggle": true },

@@ -1,14 +1,20 @@
 @echo off
-REM Starts the sim controller: waits for the phone/tablet, forwards the port,
-REM opens the dashboard on the device, and runs the server.
-REM Requires: adb in PATH, Python 3.10+ with requirements installed.
-
+REM Sim Controller launcher.
+REM Starts the server, then every time a phone/tablet is plugged in over USB:
+REM installs the app if missing, forwards the port and opens the app.
+setlocal
 cd /d "%~dp0"
+title Sim Controller
+set PKG=com.simcontroller
 
-echo Waiting for an Android device with USB debugging...
+start "Sim Controller Server" /min python server.py
+
+:loop
+echo Waiting for a phone or tablet on USB...
 adb wait-for-device
-
+adb shell pm path %PKG% | findstr /c:"package:" >nul || adb install -r "apk\SimController.apk"
 adb reverse tcp:8000 tcp:8000
-adb shell am start -a android.intent.action.VIEW -d "http://localhost:8000"
-
-python server.py
+adb shell am start -n %PKG%/.MainActivity
+echo Connected. Unplug the cable to stop; plug it in again to reopen.
+adb wait-for-disconnect
+goto loop

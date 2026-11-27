@@ -1,124 +1,334 @@
 <!doctype html>
-<html lang="he" dir="rtl">
+<html lang="he">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
 <title>Sim Controller</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap">
 <style>
-  :root { color-scheme: dark; }
-  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
-  body {
-    margin: 0; min-height: 100vh; background: #0b0d10; color: #e8eaed;
-    font-family: system-ui, sans-serif; padding: 12px;
-    display: grid; grid-template-columns: 1fr 1.2fr; gap: 12px;
+  /* Layout: a 720px-tall canvas scaled to the screen height; button pad on the
+     left, YouTube Music on the right. Width follows the screen's aspect ratio. */
+  :root {
+    color-scheme: dark;
+    --bg: #07080d;
+    --fg: #eef1f6;
+    --muted: rgba(255,255,255,.62);
+    --glass-hi: rgba(255,255,255,.075);
+    --glass-lo: rgba(255,255,255,.02);
+    --glass-line: rgba(255,255,255,.10);
+    --font: Inter, system-ui, "Segoe UI", sans-serif;
   }
-  @media (orientation: portrait) {
-    body { grid-template-columns: 1fr; }
+  * { box-sizing: border-box; margin: 0; -webkit-tap-highlight-color: transparent; user-select: none; -webkit-user-select: none; }
+  html, body { width: 100%; height: 100%; overflow: hidden; background: var(--bg); color: var(--fg); font-family: var(--font); touch-action: none; }
+
+  #canvas { position: absolute; left: 0; top: 0; height: 720px; transform-origin: 0 0; overflow: hidden; }
+
+  /* backdrop: carbon weave + colored light spill */
+  .backdrop { position: absolute; inset: 0;
+    background:
+      repeating-linear-gradient(45deg, rgba(255,255,255,.018) 0 2px, transparent 2px 6px),
+      repeating-linear-gradient(-45deg, rgba(0,0,0,.25) 0 2px, transparent 2px 6px),
+      var(--bg); }
+  .glow { position: absolute; border-radius: 50%; filter: blur(90px); }
+  .g1 { width: 520px; height: 440px; left: 60px; top: 160px; background: #1d4ed8; opacity: .5; }
+  .g2 { width: 420px; height: 380px; left: 480px; top: -140px; background: #7c3aed; opacity: .38; }
+  .g3 { width: 520px; height: 520px; right: -80px; top: 120px; background: #db2777; opacity: .42; }
+  .g4 { width: 380px; height: 300px; left: 340px; bottom: -160px; background: #059669; opacity: .32; }
+
+  .screen { position: relative; z-index: 1; height: 100%; display: grid; grid-template-columns: 1fr 460px; gap: 22px; padding: 24px 28px; }
+
+  .glass {
+    background: linear-gradient(160deg, var(--glass-hi), var(--glass-lo));
+    border: 1px solid var(--glass-line);
+    box-shadow: inset 0 1px 0 rgba(255,255,255,.12), 0 24px 60px rgba(0,0,0,.55);
+    backdrop-filter: blur(24px) saturate(140%);
+    -webkit-backdrop-filter: blur(24px) saturate(140%);
+    border-radius: 28px;
   }
-  .panel { background: #161a20; border-radius: 14px; padding: 14px; }
-  .speed { font-size: 64px; font-weight: 700; line-height: 1; text-align: center; }
-  .unit { text-align: center; opacity: .6; margin-bottom: 8px; }
-  .row { display: flex; justify-content: space-between; font-size: 18px; margin: 6px 0; }
-  .bar { height: 10px; background: #222831; border-radius: 6px; overflow: hidden; margin: 4px 0 10px; }
-  .bar > div { height: 100%; background: #4ade80; width: 0%; }
-  .bar.brake > div { background: #f87171; }
-  .buttons { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
-  button {
-    min-height: 64px; border: 0; border-radius: 12px; background: #242b35;
-    color: #e8eaed; font-size: 18px; font-weight: 600; touch-action: manipulation;
+
+  /* ---------------- button pad ---------------- */
+  .pad { display: grid; grid-template-columns: repeat(4, 1fr); grid-auto-rows: 1fr; gap: 16px; padding: 18px; min-width: 0; }
+
+  .key {
+    --c: #fff;
+    position: relative; border: 1px solid color-mix(in srgb, var(--c) 38%, rgba(255,255,255,.10));
+    border-radius: 22px; display: flex; align-items: center; justify-content: center; overflow: hidden;
+    background:
+      radial-gradient(120% 90% at 50% 115%, color-mix(in srgb, var(--c) 40%, transparent) 0%, transparent 62%),
+      linear-gradient(165deg, rgba(255,255,255,.13) 0%, rgba(255,255,255,.035) 46%, rgba(255,255,255,.02) 100%);
+    box-shadow:
+      inset 0 1px 0 rgba(255,255,255,.28),
+      inset 0 -14px 30px -18px color-mix(in srgb, var(--c) 80%, transparent),
+      0 0 34px -12px var(--c),
+      0 14px 28px rgba(0,0,0,.45);
+    transition: transform .08s ease, box-shadow .15s ease, background .15s ease;
+    cursor: pointer; padding: 0; color: inherit; font: inherit;
   }
-  button:active { background: #3a4656; }
-  .music .title { font-size: 20px; font-weight: 700; }
-  .music .artist { opacity: .7; margin-bottom: 10px; }
-  .music .controls { display: flex; gap: 10px; }
-  .music .controls button { flex: 1; }
-  .status { font-size: 14px; opacity: .6; text-align: center; margin-top: 8px; }
+  .key::before { /* glass sheen */
+    content: ""; position: absolute; left: 8%; right: 8%; top: 6px; height: 42%;
+    border-radius: 18px 18px 50% 50% / 18px 18px 26px 26px;
+    background: linear-gradient(180deg, rgba(255,255,255,.13), rgba(255,255,255,0));
+    pointer-events: none;
+  }
+  .key::after { /* status led */
+    content: ""; position: absolute; top: 14px; right: 16px; width: 7px; height: 7px; border-radius: 50%;
+    background: rgba(255,255,255,.18);
+  }
+  .key.toggle.on::after, .key:not(.toggle)::after { background: var(--c); box-shadow: 0 0 8px var(--c), 0 0 16px var(--c); }
+  .key svg { width: 46%; height: 46%; position: relative; z-index: 1; overflow: visible; pointer-events: none;
+             filter: drop-shadow(0 0 6px var(--c)) drop-shadow(0 0 14px color-mix(in srgb, var(--c) 60%, transparent)); }
+  .key svg * { stroke: var(--c); stroke-width: 5.5; stroke-linecap: round; stroke-linejoin: round; fill: none; }
+  .key svg .f { fill: var(--c); stroke: none; }
+  .key svg .hole { fill: var(--bg); }
+  .key.on, .key.pressed {
+    background:
+      radial-gradient(120% 100% at 50% 110%, color-mix(in srgb, var(--c) 70%, transparent) 0%, transparent 70%),
+      linear-gradient(165deg, rgba(255,255,255,.18), rgba(255,255,255,.04));
+    box-shadow:
+      inset 0 1px 0 rgba(255,255,255,.35),
+      inset 0 0 26px -6px var(--c),
+      0 0 50px -8px var(--c),
+      0 14px 28px rgba(0,0,0,.45);
+  }
+  .key.pressed { transform: scale(.955); }
+  .key.fail { animation: shake .3s; }
+  @keyframes shake { 25% { transform: translateX(-4px) } 75% { transform: translateX(4px) } }
+
+  /* ---------------- music ---------------- */
+  .music { position: relative; padding: 24px; display: flex; flex-direction: column; gap: 16px; overflow: hidden; min-width: 0; }
+  .bleed { position: absolute; inset: -60px; z-index: 0; filter: blur(70px) saturate(160%); opacity: .55; background-size: cover; background-position: center;
+           background-image: conic-gradient(from 210deg at 50% 40%, #ff2e63, #8a2be2, #2563eb, #06b6d4, #ff2e63); transition: background-image .6s; }
+  .music > *:not(.bleed) { position: relative; z-index: 1; }
+
+  .src { display: flex; align-items: center; gap: 10px; font-weight: 600; font-size: 15px; }
+  .ytm { width: 26px; height: 26px; border-radius: 50%; background: #ff0033; display: grid; place-items: center; box-shadow: 0 0 14px rgba(255,0,51,.6); }
+  .ytm i { width: 16px; height: 16px; border-radius: 50%; border: 2px solid #fff; display: grid; place-items: center; }
+  .ytm i::after { content: ""; margin-left: 2px; border-left: 6px solid #fff; border-top: 4px solid transparent; border-bottom: 4px solid transparent; }
+  .src small { margin-left: auto; font-size: 12px; color: var(--muted); font-weight: 500; letter-spacing: .1em; text-transform: uppercase; }
+
+  .art { flex: 1; min-height: 0; border-radius: 22px; position: relative; overflow: hidden;
+         box-shadow: 0 24px 50px rgba(0,0,0,.55), inset 0 0 0 1px rgba(255,255,255,.14); background: #111; }
+  .art img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+  .art .placeholder { position: absolute; inset: 0;
+    background:
+      radial-gradient(circle at 30% 75%, #ff2e63 0%, transparent 45%),
+      radial-gradient(circle at 80% 70%, #06b6d4 0%, transparent 45%),
+      linear-gradient(140deg, #1e1b4b 0%, #6d28d9 45%, #db2777 100%); }
+  .art .placeholder::after { content: ""; position: absolute; left: 50%; top: 50%; width: 120px; height: 120px; margin: -60px 0 0 -60px; border-radius: 50%;
+    background: linear-gradient(180deg, #fde68a, #fb7185 70%);
+    -webkit-mask-image: repeating-linear-gradient(180deg, #000 0 12px, transparent 12px 17px);
+    mask-image: repeating-linear-gradient(180deg, #000 0 12px, transparent 12px 17px); }
+
+  .meta { min-width: 0; }
+  .meta h2 { font-size: 27px; font-weight: 700; letter-spacing: -.01em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; unicode-bidi: plaintext; }
+  .meta p { font-size: 16px; color: var(--muted); margin-top: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; unicode-bidi: plaintext; }
+
+  .bar { height: 5px; border-radius: 4px; background: rgba(255,255,255,.18); position: relative; }
+  .bar > i { position: absolute; left: 0; top: 0; bottom: 0; width: 0%; border-radius: 4px; background: #fff; }
+  .bar > b { position: absolute; left: 0%; top: 50%; width: 14px; height: 14px; margin: -7px 0 0 -7px; border-radius: 50%; background: #fff; box-shadow: 0 0 10px rgba(255,255,255,.8); }
+  .times { display: flex; justify-content: space-between; font-size: 12px; color: var(--muted); margin-top: -8px; font-variant-numeric: tabular-nums; }
+
+  .ctl { display: flex; align-items: center; justify-content: space-between; padding: 0 4px; }
+  .ctl button { background: none; border: 0; padding: 10px; border-radius: 50%; display: grid; place-items: center; cursor: pointer; transition: transform .08s; }
+  .ctl button.pressed { transform: scale(.9); }
+  .ctl svg { width: 26px; height: 26px; }
+  .ctl .line * { fill: none; stroke: rgba(255,255,255,.55); stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+  .ctl .line.active * { stroke: #fff; }
+  .ctl .line.active { filter: drop-shadow(0 0 6px rgba(255,255,255,.7)); }
+  .ctl .skip svg { width: 32px; height: 32px; }
+  .ctl .skip svg * { fill: #fff; }
+  .ctl .play { width: 76px; height: 76px; background: #fff; box-shadow: 0 0 30px rgba(255,255,255,.35), 0 10px 24px rgba(0,0,0,.4); }
+  .ctl .play svg { width: 28px; height: 28px; }
+  .ctl .play svg * { fill: #0b0d12; }
+
+  .empty { position: absolute; inset: 0; display: grid; place-items: center; text-align: center; color: var(--muted); font-size: 15px; z-index: 2; }
+
+  /* connection lost banner */
+  #offline { position: absolute; left: 50%; top: 14px; transform: translateX(-50%); z-index: 5; padding: 8px 18px; border-radius: 999px;
+             background: rgba(239,68,68,.18); border: 1px solid rgba(239,68,68,.5); color: #fecaca; font-size: 14px; font-weight: 600; }
+
+  @media (prefers-reduced-motion: reduce) { .key, .ctl button { transition: none; } .key.fail { animation: none; } }
 </style>
 </head>
 <body>
+<div id="canvas">
+  <div class="backdrop"></div>
+  <div class="glow g1"></div><div class="glow g2"></div><div class="glow g3"></div><div class="glow g4"></div>
+  <div id="offline" dir="rtl" hidden>אין חיבור למחשב</div>
 
-<div class="panel">
-  <div class="speed" id="speed">0</div>
-  <div class="unit">km/h</div>
-  <div class="row"><span>הילוך</span><span id="gear">N</span></div>
-  <div class="row"><span>סל"ד</span><span id="rpm">0</span></div>
-  <div class="row"><span>דלק</span><span id="fuel">0</span></div>
-  <div>גז</div>
-  <div class="bar"><div id="gas"></div></div>
-  <div>בלם</div>
-  <div class="bar brake"><div id="brake"></div></div>
-  <div class="status" id="status">מתחבר...</div>
-</div>
+  <div class="screen">
+    <div class="pad glass" id="pad"></div>
 
-<div style="display:flex;flex-direction:column;gap:12px">
-  <div class="panel music">
-    <div class="title" id="title">אין נגינה</div>
-    <div class="artist" id="artist"></div>
-    <div class="controls">
-      <button onclick="press('prev')">⏮</button>
-      <button onclick="press('play_pause')">⏯</button>
-      <button onclick="press('next')">⏭</button>
+    <div class="music glass">
+      <div class="bleed" id="bleed"></div>
+      <div class="src"><span class="ytm"><i></i></span>YouTube Music<small id="state">Now playing</small></div>
+      <div class="art" id="art"><div class="placeholder"></div></div>
+      <div class="meta"><h2 id="title">אין נגינה</h2><p id="artist">פתח את YouTube Music במחשב</p></div>
+      <div class="bar"><i id="fill"></i><b id="knob"></b></div>
+      <div class="times"><span id="pos">0:00</span><span id="dur">0:00</span></div>
+      <div class="ctl">
+        <button class="line" id="shuffle" data-cmd="shuffle" aria-label="Shuffle"><svg viewBox="0 0 24 24"><path d="M16 3h5v5M4 20 21 3M21 16v5h-5M15 15l6 6M4 4l5 5"/></svg></button>
+        <button class="skip" data-cmd="prev" aria-label="Previous"><svg viewBox="0 0 24 24"><path d="M19 5v14l-11-7z"/><rect x="5" y="5" width="2.6" height="14" rx="1"/></svg></button>
+        <button class="play" data-cmd="play_pause" aria-label="Play or pause"><svg viewBox="0 0 24 24" id="playIcon"></svg></button>
+        <button class="skip" data-cmd="next" aria-label="Next"><svg viewBox="0 0 24 24"><path d="M5 5v14l11-7z"/><rect x="16.4" y="5" width="2.6" height="14" rx="1"/></svg></button>
+        <button class="line" id="repeat" data-cmd="repeat" aria-label="Repeat"><svg viewBox="0 0 24 24"><path d="M17 2l4 4-4 4"/><path d="M3 11v-1a4 4 0 0 1 4-4h14"/><path d="M7 22l-4-4 4-4"/><path d="M21 13v1a4 4 0 0 1-4 4H3"/></svg></button>
+      </div>
     </div>
-  </div>
-  <div class="panel">
-    <div class="buttons" id="buttons"></div>
   </div>
 </div>
 
 <script>
-const $ = (id) => document.getElementById(id);
-const LABELS = {
-  lights: "אורות", wipers: "מגבים", camera: "מצלמה", reset: "איפוס",
-  pit_limiter: "Pit limiter", gear_up: "הילוך ↑", gear_down: "הילוך ↓", ignition: "מנוע"
+// ---------- icons (100x100 viewBox, stroked in the button color) ----------
+const ICONS = {
+  lights:  '<path d="M44 26 C22 26 16 40 16 50 C16 60 22 74 44 74 Z"/><path d="M56 30 L86 36 M56 43 L86 47 M56 57 L86 53 M56 70 L86 64"/>',
+  wipers:  '<path d="M12 72 C24 30 76 30 88 72"/><path d="M50 80 L30 40"/><path d="M50 80 L74 44"/><circle class="f" cx="50" cy="80" r="5"/>',
+  camera:  '<rect x="12" y="30" width="56" height="42" rx="9"/><path d="M68 44 L88 32 V70 L68 58"/><circle cx="40" cy="51" r="9"/>',
+  reset:   '<path d="M76 52 A27 27 0 1 1 66 29"/><path d="M58 16 L68 30 L53 37"/>',
+  limiter: '<path d="M18 66 A34 34 0 1 1 82 66"/><path d="M50 60 L66 38"/><circle class="f" cx="50" cy="60" r="6"/><path d="M30 80 H70"/>',
+  up:      '<path d="M22 54 L50 26 L78 54"/><path d="M22 78 L50 50 L78 78"/>',
+  down:    '<path d="M22 22 L50 50 L78 22"/><path d="M22 46 L50 74 L78 46"/>',
+  power:   '<path d="M50 14 V50"/><path d="M30 28 A32 32 0 1 0 70 28"/>',
+  abs:     '<circle cx="50" cy="50" r="22"/><path d="M20 28 C10 42 10 58 20 72"/><path d="M80 28 C90 42 90 58 80 72"/><circle class="f" cx="50" cy="50" r="7"/>',
+  tc:      '<path d="M18 52 L26 34 C28 30 32 28 36 28 H64 C68 28 72 30 74 34 L82 52 V62 H18 Z"/><circle class="f" cx="32" cy="62" r="6"/><circle class="f" cx="68" cy="62" r="6"/><path d="M26 86 C30 78 34 82 38 74"/><path d="M62 86 C66 78 70 82 74 74"/>',
+  sliders: '<path d="M16 30 H84 M16 50 H84 M16 70 H84"/><circle class="hole" cx="36" cy="30" r="8"/><circle class="hole" cx="64" cy="50" r="8"/><circle class="hole" cx="44" cy="70" r="8"/>',
+  headset: '<path d="M22 74 V54 A28 28 0 0 1 78 54 V74"/><rect x="16" y="58" width="14" height="24" rx="5"/><rect x="70" y="58" width="14" height="24" rx="5"/>',
+  dot:     '<circle cx="50" cy="50" r="20"/>'
 };
+const PLAY  = '<path d="M7 4.5v15l12.5-7.5z"/>';
+const PAUSE = '<rect x="6" y="4" width="4" height="16" rx="1.3"/><rect x="14" y="4" width="4" height="16" rx="1.3"/>';
+const $ = (id) => document.getElementById(id);
 
-async function loadButtons() {
-  const res = await fetch("/config");
-  const { buttons } = await res.json();
-  const box = $("buttons");
-  for (const name of Object.keys(buttons)) {
-    const b = document.createElement("button");
-    b.textContent = LABELS[name] || name;
-    b.onclick = () => press(name);
-    box.appendChild(b);
+// ---------- fit the 720px-tall canvas to the screen ----------
+function fit() {
+  const scale = window.innerHeight / 720;
+  const width = Math.max(1180, window.innerWidth / scale);
+  const canvas = $("canvas");
+  canvas.style.width = width + "px";
+  const s = Math.min(scale, window.innerWidth / width);
+  canvas.style.transform = `scale(${s})`;
+  canvas.style.left = ((window.innerWidth - width * s) / 2) + "px";
+  canvas.style.top = ((window.innerHeight - 720 * s) / 2) + "px";
+}
+window.addEventListener("resize", fit);
+fit();
+
+// ---------- haptics + sending ----------
+function buzz() {
+  try { if (window.SimNative) window.SimNative.vibrate(14); else if (navigator.vibrate) navigator.vibrate(14); } catch (e) {}
+}
+
+async function send(name) {
+  try {
+    const res = await fetch("/button", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name }) });
+    return res.ok;
+  } catch (e) { return false; }
+}
+
+function pressable(el, onPress) {
+  el.addEventListener("pointerdown", (ev) => {
+    ev.preventDefault();
+    el.classList.add("pressed");
+    buzz();
+    onPress();
+  });
+  const up = () => el.classList.remove("pressed");
+  el.addEventListener("pointerup", up);
+  el.addEventListener("pointerleave", up);
+  el.addEventListener("pointercancel", up);
+}
+
+// ---------- toggle states are remembered on this device ----------
+let toggles = {};
+try { toggles = JSON.parse(localStorage.getItem("toggles") || "{}"); } catch (e) {}
+function saveToggles() { try { localStorage.setItem("toggles", JSON.stringify(toggles)); } catch (e) {} }
+
+// ---------- build the pad from config.json ----------
+async function buildPad() {
+  const { buttons } = await (await fetch("/config")).json();
+  const pad = $("pad");
+  pad.innerHTML = "";
+  const count = Object.keys(buttons).length;
+  pad.style.gridTemplateColumns = `repeat(${count <= 9 ? 3 : count <= 16 ? 4 : 5}, 1fr)`;
+  for (const [name, b] of Object.entries(buttons)) {
+    const el = document.createElement("button");
+    el.className = "key" + (b.toggle ? " toggle" : "") + (b.toggle && toggles[name] ? " on" : "");
+    el.style.setProperty("--c", b.color || "#e2e8f0");
+    el.setAttribute("aria-label", name);
+    el.innerHTML = `<svg viewBox="0 0 100 100">${ICONS[b.icon] || ICONS.dot}</svg>`;
+    pressable(el, async () => {
+      if (b.toggle) {
+        toggles[name] = !toggles[name];
+        el.classList.toggle("on", toggles[name]);
+        saveToggles();
+      }
+      if (!(await send(name))) {
+        el.classList.remove("fail"); void el.offsetWidth; el.classList.add("fail");
+      }
+    });
+    pad.appendChild(el);
   }
 }
 
-async function press(name) {
-  try {
-    await fetch("/button", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name })
-    });
-  } catch (e) {}
-}
+// ---------- music ----------
+document.querySelectorAll(".ctl button").forEach((el) => pressable(el, () => send(el.dataset.cmd)));
+$("playIcon").innerHTML = PLAY;
 
-function connect() {
-  const proto = location.protocol === "https:" ? "wss" : "ws";
-  const ws = new WebSocket(`${proto}://${location.host}/ws`);
-  ws.onopen = () => $("status").textContent = "מחובר";
-  ws.onclose = () => { $("status").textContent = "מנותק, מתחבר מחדש..."; setTimeout(connect, 1000); };
-  ws.onmessage = (ev) => {
-    const { telemetry: t, media: m } = JSON.parse(ev.data);
-    if (t) {
-      $("speed").textContent = Math.round(t.speed);
-      $("gear").textContent = t.gear === 0 ? "N" : t.gear < 0 ? "R" : t.gear;
-      $("rpm").textContent = t.rpm;
-      $("fuel").textContent = t.fuel;
-      $("gas").style.width = (t.gas * 100) + "%";
-      $("brake").style.width = (t.brake * 100) + "%";
+const fmt = (s) => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, "0")}`;
+let media = null, mediaAt = 0, artUrl = null;
+
+function renderMedia(m) {
+  media = m; mediaAt = performance.now();
+  if (!m) {
+    $("title").textContent = "אין נגינה";
+    $("artist").textContent = "פתח את YouTube Music במחשב";
+    $("state").textContent = "Idle";
+    $("playIcon").innerHTML = PLAY;
+    return;
+  }
+  $("title").textContent = m.title || "—";
+  $("artist").textContent = m.artist || "";
+  $("state").textContent = m.playing ? "Now playing" : "Paused";
+  $("playIcon").innerHTML = m.playing ? PAUSE : PLAY;
+  $("dur").textContent = fmt(m.duration || 0);
+  $("shuffle").classList.toggle("active", !!m.shuffle);
+  $("repeat").classList.toggle("active", !!m.repeat);
+  if (m.art !== artUrl) {
+    artUrl = m.art;
+    const art = $("art");
+    if (m.art) {
+      art.innerHTML = `<img src="${m.art}" alt="">`;
+      $("bleed").style.backgroundImage = `url("${m.art}")`;
     } else {
-      $("status").textContent = "AC לא פועל";
+      art.innerHTML = '<div class="placeholder"></div>';
+      $("bleed").style.backgroundImage = "";
     }
-    if (m) {
-      $("title").textContent = m.title || "אין נגינה";
-      $("artist").textContent = m.artist;
-    }
-  };
+  }
 }
 
-loadButtons();
+function tick() {
+  if (media && media.duration) {
+    const extra = media.playing ? (performance.now() - mediaAt) / 1000 : 0;
+    const pos = Math.min(media.duration, (media.position || 0) + extra);
+    const pct = (pos / media.duration) * 100;
+    $("fill").style.width = pct + "%";
+    $("knob").style.left = pct + "%";
+    $("pos").textContent = fmt(pos);
+  } else {
+    $("fill").style.width = "0%"; $("knob").style.left = "0%"; $("pos").textContent = "0:00";
+  }
+  requestAnimationFrame(tick);
+}
+requestAnimationFrame(tick);
+
+// ---------- live connection ----------
+function connect() {
+  const ws = new WebSocket(`ws://${location.host}/ws`);
+  ws.onopen = () => { $("offline").hidden = true; };
+  ws.onmessage = (ev) => renderMedia(JSON.parse(ev.data).media);
+  ws.onclose = () => { $("offline").hidden = false; setTimeout(connect, 1000); };
+}
+
+buildPad().catch(() => { $("offline").hidden = false; setTimeout(buildPad, 2000); });
 connect();
 </script>
 </body>
